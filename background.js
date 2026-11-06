@@ -33,7 +33,7 @@ async function getSettings() {
 function isLoopback(url) {
   try {
     const h = new URL(url).hostname;
-    return h === "localhost" || h === "127.0.0.1" || h === "[::1]";
+    return h === "localhost" || h === "127.0.0.1"; // manifest の host_permissions と同じ範囲
   } catch (_) { return false; }
 }
 
@@ -41,6 +41,9 @@ function isLoopback(url) {
 function checkUrl(url) {
   let u;
   try { u = new URL(url); } catch (_) { throw new Error("設定画面のサーバー URL が正しくありません。"); }
+  if (isLoopback(url) && u.protocol !== "http:") {
+    throw new Error("PC 内のサーバーは http://127.0.0.1:ポート番号/v1 の形で指定してください。");
+  }
   if (!isLoopback(url) && u.protocol !== "https:") {
     throw new Error("PC 以外のサーバーには https:// の URL でのみ接続できます。設定画面の URL を確認してください。");
   }

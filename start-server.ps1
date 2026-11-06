@@ -6,9 +6,13 @@
 #
 # 安全のための設定:
 #   --host 127.0.0.1            同じ PC からしか接続できない
-#   --api-key                   合言葉のない依頼は受け付けない(拡張機能は合言葉を付けて送る)
-#   --cors-origins localhost    外部の Web ページから JavaScript でサーバーを使えないようにする
+#   --api-key                   合言葉のない依頼は受け付けない(拡張機能は合言葉を付けて送る)。
+#                               合言葉は公開の固定値で「認証」ではなく、Web ページからの単純な依頼を防ぐ補助策。
+#   --cors-origins (ダミー)     どの Web ページ(localhost 上のページを含む)にも、ブラウザからの利用を許可しない。
+#                               拡張機能は Chrome のホスト権限で通信するため、この制限を受けない。
 #   --no-webui --no-slots       使わない Web 画面と、処理中の内容を見られる機能を止める
+#   自動起動は、このスクリプトを %LOCALAPPDATA%\PLaMoSelectTranslate にコピーし、そこから起動する
+#   (展開したフォルダが書き換えられたり移動されたりしても、自動起動が影響を受けないように)
 # その他:
 #   -ngl 0 --device none        一部の GPU(Snapdragon の Adreno など)で翻訳結果が壊れるため、CPU のみで動かす
 #   -c 8192                     拡張機能の用途に足りる文脈長に絞り、メモリ使用量を減らす
@@ -26,6 +30,8 @@ $ErrorActionPreference = "Stop"
 $ApiKey   = "plamo-select-translate"   # 拡張機能(background.js / options.js)と同じ値
 $IdleSec  = 1800                       # 30 分使わなければ休止
 $AppDir   = Join-Path $env:LOCALAPPDATA "PLaMoSelectTranslate"
+$AppScript = Join-Path $AppDir "start-server.ps1"   # 自動起動で実行するコピー
+$NoCorsOrigin = "https://plamo-select-translate.invalid"   # 実在しないオリジン(= どのページにも許可しない)
 $Shortcut = if ($ShortcutPath) { $ShortcutPath } else { Join-Path ([Environment]::GetFolderPath("Startup")) "PLaMo 選択翻訳サーバー.lnk" }
 $repo08   = "pfnet/plamo-3-translate-0.8b-GGUF:Q4_K_M"
 $repo2    = "pfnet/plamo-3-translate-2b-GGUF:Q4_K_M"
@@ -35,19 +41,28 @@ function Pause-Exit([int]$code) {
   exit $code
 }
 
-# winget で入れた llama-server を優先して探す(インストール直後で PATH が未反映でも見つかる)
-function Find-LlamaServer {
+# winget で入れた llama-server を優先して探す(インストール直後で PATH が未反映でも見つかる)。
+# 画面に使用パスを表示できる対話起動のときだけ、PATH 上の llama-server も候補にする
+# (画面に出ない自動起動では、PATH に置かれた別の実行ファイルを使わないため)。
+function Find-LlamaServer([bool]$allowPath) {
   $pkg = Get-ChildItem (Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages") -Directory -Filter "ggml.llamacpp_*" -ErrorAction SilentlyContinue |
          ForEach-Object { Join-Path $_.FullName "llama-server.exe" } | Where-Object { Test-Path $_ } | Select-Object -First 1
   if ($pkg) { return $pkg }
-  $cmd = Get-Command llama-server -ErrorAction SilentlyContinue
-  if ($cmd) { return $cmd.Source }
+  if ($allowPath) {
+    $cmd = Get-Command llama-server -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+  }
   return $null
+}
+
+function Write-Log([string]$msg) {
+  New-Item -ItemType Directory -Force $AppDir | Out-Null
+  Add-Content -Path (Join-Path $AppDir "autostart.log") -Value ("{0:yyyy-MM-dd HH:mm:ss}  {1}" -f (Get-Date), $msg) -Encoding UTF8
 }
 
 function Server-Args([string]$repo, [int]$port) {
   return @("-hf", $repo, "--host", "127.0.0.1", "--port", "$port",
-           "--api-key", $ApiKey, "--cors-origins", "localhost", "--no-webui", "--no-slots",
+           "--api-key", $ApiKey, "--cors-origins", $NoCorsOrigin, "--no-webui", "--no-slots",
            "-ngl", "0", "--device", "none", "-c", "8192", "--sleep-idle-seconds", "$IdleSec")
 }
 
@@ -70,11 +85,15 @@ function Port-InUse([int]$port) {
   } catch { return $false }
 }
 
-# このツールが起動した llama-server を止める
-function Stop-OurServers {
+# このツールが起動した llama-server(この合言葉付きで起動したもの)だけを探す。
+# 同じモデルを別の設定で動かしている llama-server は対象にしない。
+function Get-OurServers {
   Get-CimInstance Win32_Process -Filter "Name='llama-server.exe'" |
-    Where-Object { $_.CommandLine -match "plamo-3-translate" } |
-    ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; $_.ProcessId }
+    Where-Object { $_.CommandLine -match [regex]::Escape("--api-key $ApiKey") -and $_.CommandLine -match "plamo-3-translate" }
+}
+
+function Stop-OurServers {
+  Get-OurServers | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; $_.ProcessId }
 }
 
 function Ask-Choice([string]$purpose) {
@@ -95,14 +114,16 @@ function Ask-Choice([string]$purpose) {
 if ($Uninstall) {
   if (Test-Path $Shortcut) { Remove-Item $Shortcut -Force; Write-Host "自動起動の登録を解除しました。" }
   else { Write-Host "自動起動は登録されていませんでした。" }
+  if ((Test-Path $AppScript) -and ($AppScript -ne $PSCommandPath)) { Remove-Item $AppScript -Force -ErrorAction SilentlyContinue }
   $stopped = @(Stop-OurServers)
   if ($stopped.Count) { Write-Host "動いていた翻訳サーバーを止めました。" }
   Pause-Exit 0
 }
 
 $Host.UI.RawUI.WindowTitle = "PLaMo 選択翻訳 - 翻訳サーバー"
-$exe = Find-LlamaServer
+$exe = Find-LlamaServer (-not $Background)
 if (-not $exe -and -not $DryRun) {
+  if ($Background) { Write-Log "llama-server が見つからないため起動できませんでした(winget install llama.cpp が必要です)"; exit 1 }
   Write-Host "llama-server が見つかりません。" -ForegroundColor Red
   Write-Host "ターミナルで「winget install llama.cpp」を実行してから、もう一度開いてください。"
   Pause-Exit 1
@@ -125,10 +146,14 @@ if ($DryRun) {
 
 # ---------- 自動起動の登録 ----------
 if ($Install) {
+  # このスクリプトを専用フォルダにコピーし、自動起動ではコピーの方を実行する
+  New-Item -ItemType Directory -Force $AppDir | Out-Null
+  if ($PSCommandPath -ne $AppScript) { Copy-Item $PSCommandPath $AppScript -Force }
   $ws = New-Object -ComObject WScript.Shell
   $lnk = $ws.CreateShortcut($Shortcut)
   $lnk.TargetPath = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
-  $lnk.Arguments = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$PSCommandPath`" -Background -Choice $Choice"
+  # -ExecutionPolicy Bypass: 既定の実行ポリシーでは .ps1 を実行できない PC が多いため、このスクリプトに限って許可する
+  $lnk.Arguments = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$AppScript`" -Background -Choice $Choice"
   $lnk.WindowStyle = 7   # 最小化で起動(画面に出さない)
   $lnk.Description = "PLaMo 選択翻訳の翻訳サーバーを裏で起動します"
   $lnk.Save()
@@ -144,7 +169,13 @@ if ($Install) {
 if ($Background) {
   New-Item -ItemType Directory -Force $AppDir | Out-Null
   foreach ($s in $servers) {
-    if (Port-InUse $s.Port) { continue }   # すでに動いていれば何もしない
+    if (Port-InUse $s.Port) {
+      # すでにこのツールのサーバーが動いていれば何もしない。別のアプリが使っている場合はログに残す
+      $ours = @(Get-OurServers | Where-Object { $_.CommandLine -match "--port $($s.Port)(\s|$)" })
+      if (-not $ours.Count) { Write-Log "ポート $($s.Port) を別のアプリが使っているため、$($s.Label) の翻訳サーバーを起動できませんでした" }
+      continue
+    }
+    Write-Log "$($s.Label) の翻訳サーバーを起動しました(ポート $($s.Port)、$exe)"
     Start-Process -FilePath $exe -ArgumentList $s.Args -WindowStyle Hidden `
       -RedirectStandardError (Join-Path $AppDir "server-$($s.Port).log") `
       -RedirectStandardOutput (Join-Path $AppDir "server-$($s.Port).out.log") | Out-Null

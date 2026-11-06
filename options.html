@@ -49,8 +49,8 @@
 <details>
   <summary><small>Mac / Linux や、ターミナルから自分で起動する場合</small></summary>
   <small>llama.cpp を入れてから、次のコマンドで起動します(2B を使う場合は <code>0.8b</code> を <code>2b</code> に、使い分けモードの 2B は <code>8080</code> を <code>8081</code> に変えます)。</small>
-  <pre><code>llama-server -hf pfnet/plamo-3-translate-0.8b-GGUF:Q4_K_M --host 127.0.0.1 --port 8080 --api-key plamo-select-translate --cors-origins localhost --no-webui --no-slots -ngl 0 --device none -c 8192 --sleep-idle-seconds 1800</code><button class="copy sub">コピー</button></pre>
-  <small><code>--api-key</code> と <code>--cors-origins localhost</code> は、閲覧中の Web ページが PC 上の翻訳サーバーを勝手に使えないようにするための設定です。GPU を使う場合は <code>-ngl 0 --device none</code> を外してください(一部の GPU では翻訳結果が壊れることがあります)。</small>
+  <pre><code>llama-server -hf pfnet/plamo-3-translate-0.8b-GGUF:Q4_K_M --host 127.0.0.1 --port 8080 --api-key plamo-select-translate --cors-origins https://plamo-select-translate.invalid --no-webui --no-slots -ngl 0 --device none -c 8192 --sleep-idle-seconds 1800</code><button class="copy sub">コピー</button></pre>
+  <small><code>--api-key</code>(公開の合言葉)と <code>--cors-origins</code>(どのページにも許可しない値)は、閲覧中の Web ページが PC 上の翻訳サーバーを勝手に使えないようにするための設定です。GPU を使う場合は <code>-ngl 0 --device none</code> を外してください(一部の GPU では翻訳結果が壊れることがあります)。</small>
 </details>
 
 <h2>接続設定</h2>

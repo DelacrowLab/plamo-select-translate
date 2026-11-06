@@ -35,7 +35,11 @@ Web ページで選択したテキストを、自分の PC で動かす **PLaMo 
 |---|---|
 | `--host 127.0.0.1` | 同じ PC からのみ接続を受け付ける |
 | `--api-key plamo-select-translate` | 合言葉のない依頼を拒否する(Web ページからの単純なリクエストを防ぐ。秘密の鍵ではない) |
-| `--cors-origins localhost` | 外部の Web ページの JavaScript からサーバーを使えないようにする |
+| `--cors-origins https://plamo-select-translate.invalid` | 実在しないオリジンだけを許可し、どの Web ページ(localhost 上のページを含む)の JavaScript からもサーバーを使えないようにする。拡張機能は Chrome のホスト権限で通信するため影響を受けない |
+
+合言葉は公開の固定値なので、認証ではありません。同じ PC 上で動くブラウザ以外のプログラムは、合言葉を付ければ翻訳サーバーを使えます(サーバーは 127.0.0.1 のみで待ち受けるため、ほかの PC からは使えません)。
+
+自動起動を登録すると、`start-server.ps1` を `%LOCALAPPDATA%\PLaMoSelectTranslate` にコピーし、サインイン時にはそのコピーを実行します。起動の記録は同じフォルダの `autostart.log` に残ります。
 | `--no-webui --no-slots` | 使わない Web 画面と、処理中の内容を見られるエンドポイントを無効にする |
 | `-ngl 0 --device none` | CPU のみで動かす(一部の GPU では出力が壊れるため) |
 | `-c 8192` | 文脈長を絞ってメモリ使用量を減らす |

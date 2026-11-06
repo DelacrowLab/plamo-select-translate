@@ -63,7 +63,7 @@ Promise.all([chrome.storage.sync.get(null), chrome.storage.local.get("apiKey")])
 function isLocal(url) {
   try {
     const h = new URL(url).hostname;
-    return h === "localhost" || h === "127.0.0.1" || h === "[::1]";
+    return h === "localhost" || h === "127.0.0.1"; // manifest の host_permissions と同じ範囲
   } catch (_) { return false; }
 }
 
@@ -72,7 +72,8 @@ function urlProblem(url) {
   let u;
   try { u = new URL(url); } catch (_) { return "URL の形式が正しくありません"; }
   if (!/^https?:$/.test(u.protocol)) return "URL は http:// か https:// で始めてください";
-  if (!isLocal(url) && u.protocol !== "https:") return "PC 以外のサーバーは https:// の URL を指定してください";
+  if (isLocal(url) && u.protocol !== "http:") return "PC 内のサーバーは http://127.0.0.1:ポート番号/v1 の形で指定してください";
+  if (!isLocal(url) && u.protocol !== "https:") return "PC 以外のサーバーは https:// の URL を指定してください(PC 内は 127.0.0.1 か localhost)";
   return "";
 }
 
