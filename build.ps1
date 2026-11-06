@@ -18,32 +18,31 @@ $serverFiles = @(
   "third_party\PLaMo-Community-License-ja.txt", "third_party\PLaMo-Community-License-en.txt"
 )
 
-# Windows PowerShell 5.1 の Compress-Archive はパス区切りに「\」を使い、Mac などで正しく展開されないため、
-# .NET の ZipArchive で「/」区切り・UTF-8 ファイル名の zip を作る
-Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
-function New-Zip([string]$srcDir, [string]$zipPath, [string]$prefix) {
-  $fs = [System.IO.File]::Open($zipPath, [System.IO.FileMode]::Create)
-  $za = New-Object System.IO.Compression.ZipArchive($fs, [System.IO.Compression.ZipArchiveMode]::Create, $false, [System.Text.Encoding]::UTF8)
-  try {
-    foreach ($f in Get-ChildItem $srcDir -Recurse -File) {
-      $rel = $prefix + $f.FullName.Substring($srcDir.Length + 1).Replace('\', '/')
-      [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($za, $f.FullName, $rel, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
-    }
-  } finally { $za.Dispose(); $fs.Dispose() }
-}
+# zip は git archive で、コミット済みの内容から作る。
+#   - Mac 用の .command / .sh の実行権限(git に記録した 755)が zip に残る
+#     (Windows の .NET や Compress-Archive で作ると実行権限が失われ、Mac でダブルクリックしても動かない)
+#   - パス区切りは「/」、日本語のファイル名は UTF-8 で記録される
+#   - 改行コードは .gitattributes に従う(.bat / .ps1 は CRLF、それ以外は LF)
+# そのため、配布物に入るファイルに未コミットの変更があると止める。
+$git = (Get-Command git -ErrorAction Stop).Source
 
 function Build([string[]]$files, [string]$zipName, [string]$prefix) {
-  $stage = Join-Path $dist "_stage"
-  if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
-  foreach ($f in ($files | Select-Object -Unique)) {
-    $dst = Join-Path $stage $f
-    New-Item -ItemType Directory -Force (Split-Path $dst) | Out-Null
-    Copy-Item (Join-Path $root $f) $dst
-  }
+  $paths = $files | Select-Object -Unique | ForEach-Object { $_.Replace('\', '/') }
   $zip = Join-Path $dist $zipName
-  New-Zip $stage $zip $prefix
-  Remove-Item $stage -Recurse -Force
+  $gargs = @("-C", $root, "-c", "core.quotepath=false", "archive", "--format=zip", "-o", $zip)
+  if ($prefix) { $gargs += "--prefix=$prefix" }
+  $gargs += @("HEAD", "--") + $paths
+  & $git @gargs
+  if ($LASTEXITCODE -ne 0) { throw "git archive に失敗しました: $zipName" }
   return $zip
+}
+
+$allFiles = ($extFiles + $serverFiles) | Select-Object -Unique | ForEach-Object { $_.Replace('\', '/') }
+$dirty = & $git -C $root -c core.quotepath=false status --porcelain -- @allFiles
+if ($dirty) {
+  Write-Host "配布物に入るファイルに、コミットしていない変更があります。先にコミットしてください:" -ForegroundColor Red
+  $dirty | ForEach-Object { Write-Host "  $_" }
+  exit 1
 }
 
 $dist = Join-Path $root "dist"

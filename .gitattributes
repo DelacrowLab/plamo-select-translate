@@ -1,0 +1,7 @@
+# 改行コードをそろえる(Windows・Mac のどちらで作業しても、配布 zip の中身が同じになるように)
+* text=auto eol=lf
+# Windows で実行するファイルは CRLF(cmd.exe / Windows PowerShell 向け)
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+# 画像などはそのまま
+*.png binary
