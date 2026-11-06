@@ -13,6 +13,8 @@ $extFiles = @(
 $serverFiles = @(
   "start-server.bat", "start-server.ps1", "自動起動を設定する.bat", "自動起動を解除する.bat",
   "はじめにお読みください.txt", "LICENSE",
+  "start-server.sh", "翻訳サーバーを起動する.command", "自動起動を設定する.command", "自動起動を解除する.command",
+  "はじめにお読みください(Mac).txt",
   "third_party\PLaMo-Community-License-ja.txt", "third_party\PLaMo-Community-License-en.txt"
 )
 

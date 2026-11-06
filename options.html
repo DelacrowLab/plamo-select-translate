@@ -48,6 +48,7 @@
 </ol>
 <details>
   <summary><small>Mac / Linux や、ターミナルから自分で起動する場合</small></summary>
+  <small><b>Mac:</b> <code>brew install llama.cpp</code> で入れてから、翻訳サーバーのセットの <code>自動起動を設定する.command</code> をダブルクリックします(詳しくは「はじめにお読みください(Mac).txt」)。</small><br>
   <small>llama.cpp を入れてから、次のコマンドで 0.8B を起動します。2B も使う場合は、別のターミナルで <code>0.8b</code> を <code>2b</code> に、<code>8080</code> を <code>8081</code> に変えたコマンドも起動します。</small>
   <pre><code>llama-server -hf pfnet/plamo-3-translate-0.8b-GGUF:Q4_K_M --host 127.0.0.1 --port 8080 --api-key plamo-select-translate --cors-origins https://plamo-select-translate.invalid --no-webui --no-slots -ngl 0 --device none -c 8192 --sleep-idle-seconds 1800</code><button class="copy sub">コピー</button></pre>
   <small><code>--api-key</code>(公開の合言葉)と <code>--cors-origins</code>(どのページにも許可しない値)は、閲覧中の Web ページが PC 上の翻訳サーバーを勝手に使えないようにするための設定です。GPU を使う場合は <code>-ngl 0 --device none</code> を外してください(一部の GPU では翻訳結果が壊れることがあります)。</small>

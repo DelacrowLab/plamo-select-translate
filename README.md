@@ -45,7 +45,8 @@ Web ページで選択したテキストを、自分の PC で動かす **PLaMo 
 | `-c 8192` | 文脈長を絞ってメモリ使用量を減らす |
 | `--sleep-idle-seconds 1800`(2B は 600) | 0.8B は 30 分、2B は 10 分使わないとモデルをメモリから下ろす |
 
-Mac / Linux では、llama.cpp を入れて同じ引数で `llama-server` を起動してください。
+Mac では `brew install llama.cpp` のあと「自動起動を設定する.command」をダブルクリックします(`start-server.sh` が launchd に登録します。GPU(Metal)で正常に翻訳できるため `-ngl 0 --device none` は付けません)。詳しくは「はじめにお読みください(Mac).txt」を参照してください。
+Linux では、llama.cpp を入れて同じ引数で `llama-server` を起動してください。
 
 ## 仕組み
 
