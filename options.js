@@ -7,7 +7,7 @@ const DEFAULTS = {
   model: "plamo-3-translate",
   apiKey: "",
   targetLang: "ja",
-  altLang: "en",
+  altLang: "", // "" = 日本語の文章は翻訳しない
   form: "",
   useTitleContext: true,
   autoTranslate: true
@@ -32,6 +32,7 @@ const LANGS = [
   ["pa", "パンジャブ語"], ["si", "シンハラ語"], ["sk", "スロバキア語"], ["sl", "スロベニア語"], ["sr", "セルビア語"],
   ["sw", "スワヒリ語"], ["ta", "タミル語"], ["te", "テルグ語"], ["ur", "ウルドゥー語"], ["uz", "ウズベク語"]
 ];
+$("altLang").add(new Option("なし(翻訳しない)", ""));
 for (const id of ["targetLang", "altLang"]) {
   for (const [code, name] of LANGS) $(id).add(new Option(`${name} (${code})`, code));
 }

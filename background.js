@@ -9,7 +9,7 @@ const DEFAULTS = {
   model: "plamo-3-translate",
   apiKey: "",
   targetLang: "ja", // 翻訳先
-  altLang: "en",    // 選択テキストがすでに翻訳先の言語だったときの翻訳先
+  altLang: "",      // 選択テキストが日本語だったときの翻訳先("" = 翻訳しない)
   form: "",         // "" | "plain" | "polite"(日本語出力時の文体)
   useTitleContext: true,
   autoTranslate: true
@@ -126,9 +126,15 @@ function clean(s) {
   return String(s).replace(/<\|[^<>|\s]{1,40}\|>/g, "");
 }
 
+// 翻訳先の言語を決める。翻訳先が日本語で、選んだ文章も日本語なら altLang を使う。
+// altLang が「なし」("")なら、空文字を返す(= 翻訳しない)
+function decideTarget(text, s) {
+  if (s.targetLang === "ja" && looksJapanese(text, s.pageLang)) return s.altLang || "";
+  return s.targetLang;
+}
+
 function buildPrompt(text, title, s) {
-  let target = s.targetLang;
-  if (target === "ja" && looksJapanese(text, s.pageLang)) target = s.altLang;
+  const target = decideTarget(text, s);
 
   let p = "<|plamo:tag|>dataset<|plamo:msg|>translation";
   if (s.useTitleContext && title) {
@@ -160,6 +166,8 @@ function pickServers(text, s) {
 async function streamTranslate({ text, title, pageLang }, port, signal) {
   const s = await getSettings();
   s.pageLang = pageLang;
+  // 日本語の文章を「翻訳しない」設定なら、サーバーに送らずに知らせる
+  if (!decideTarget(text, s)) { safePost(port, { skip: true }); return; }
   const [primary, fallback] = pickServers(text, s);
   try {
     await streamFrom(primary, text, title, s, port, signal);

@@ -7,6 +7,15 @@
   let port = null;
   let lastText = "";
   const RELOAD_MSG = "拡張機能が更新されました。このページを再読み込みしてから、もう一度お試しください。";
+  const SKIP_MSG = "日本語の文章は翻訳しない設定です(設定画面の「選択テキストが日本語だったときの翻訳先」で変更できます)。";
+
+  // background.js と同じ判定: ひらがな・カタカナを含むか、漢字だけで日本語のページなら日本語とみなす
+  function looksJapanese(text, pageLang) {
+    if (/[぀-ヿ]/.test(text)) return true;
+    const hasHan = /\p{Script=Han}/u.test(text);
+    const hasLatin = /\p{Script=Latin}/u.test(text);
+    return hasHan && !hasLatin && /^ja\b/i.test(pageLang || "");
+  }
 
   function ensureUI() {
     if (host) return;
@@ -78,7 +87,8 @@
     return { text, rect: sel.getRangeAt(0).getBoundingClientRect() };
   }
 
-  function translate() {
+  // explicit: 右クリックメニューや Alt+T で翻訳を頼まれたとき true(文字を選んだだけの自動翻訳では false)
+  function translate(explicit = false) {
     const picked = getSelected();
     if (!picked) return;
     const { text, rect } = picked;
@@ -117,6 +127,14 @@
         clearTimeout(hintTimer);
         if (box.classList.contains("hint")) { box.className = "box busy"; box.textContent = ""; }
       }
+      if (m.skip) {
+        // 日本語の文章を「翻訳しない」設定のとき。右クリックや Alt+T で頼まれた場合だけ理由を表示する
+        clearTimeout(hintTimer);
+        closePort();
+        if (explicit) { box.className = "box hint"; box.textContent = SKIP_MSG; }
+        else box.hidden = true;
+        return;
+      }
       if (m.delta) box.textContent += m.delta;
       if (m.error) { box.className = "box err"; box.textContent = m.error; }
       if (m.done) box.className = "box";
@@ -145,13 +163,18 @@
       if (picked.text === lastText && box && !box.hidden) return;
       // 拡張機能の更新前から開いていたタブでは、何もしない(エラーを出さない)
       if (!alive()) return;
-      let autoTranslate = true;
+      let s;
       try {
-        ({ autoTranslate = true } = await chrome.storage.sync.get("autoTranslate"));
+        s = await chrome.storage.sync.get(["autoTranslate", "targetLang", "altLang"]);
       } catch (_) {
         return;
       }
-      if (autoTranslate) translate();
+      if (s.autoTranslate === false) return;
+      // 日本語の文章を「翻訳しない」設定なら、パネルを出さずに何もしない
+      const targetLang = s.targetLang || "ja";
+      const altLang = s.altLang ?? "";
+      if (targetLang === "ja" && !altLang && looksJapanese(picked.text, document.documentElement.lang)) return;
+      translate();
     }, 10);
   });
 
@@ -165,6 +188,6 @@
   window.addEventListener("pagehide", hide);
 
   chrome.runtime.onMessage.addListener((m) => {
-    if (m.type === "translate-selection") translate();
+    if (m.type === "translate-selection") translate(true);
   });
 })();
