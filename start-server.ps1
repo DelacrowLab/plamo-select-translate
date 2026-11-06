@@ -28,7 +28,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 $ApiKey   = "plamo-select-translate"   # 拡張機能(background.js / options.js)と同じ値
-$IdleSec  = 1800                       # 30 分使わなければ休止
+$IdleSec  = 1800                       # 0.8B: 30 分使わなければ休止
+$IdleSec2 = 600                        # 2B: メモリを多く使うので 10 分使わなければ休止
 $AppDir   = Join-Path $env:LOCALAPPDATA "PLaMoSelectTranslate"
 $AppScript = Join-Path $AppDir "start-server.ps1"   # 自動起動で実行するコピー
 $NoCorsOrigin = "https://plamo-select-translate.invalid"   # 実在しないオリジン(= どのページにも許可しない)
@@ -62,18 +63,23 @@ function Write-Log([string]$msg) {
   Add-Content -Path (Join-Path $AppDir "autostart.log") -Value ("{0:yyyy-MM-dd HH:mm:ss}  {1}" -f (Get-Date), $msg) -Encoding UTF8
 }
 
-function Server-Args([string]$repo, [int]$port) {
+function Server-Args([string]$repo, [int]$port, [int]$idle) {
   return @("-hf", $repo, "--host", "127.0.0.1", "--port", "$port",
            "--api-key", $ApiKey, "--cors-origins", $NoCorsOrigin, "--no-webui", "--no-slots",
-           "-ngl", "0", "--device", "none", "-c", "8192", "--sleep-idle-seconds", "$IdleSec")
+           "-ngl", "0", "--device", "none", "-c", "8192", "--sleep-idle-seconds", "$idle")
 }
 
+# 0.8B は常にポート 8080、2B は常にポート 8081 で動かす。どのモデルで翻訳するかは拡張機能の設定画面で選ぶ。
+#   1 = 0.8B のみ
+#   2 = 0.8B と 2B の両方(拡張機能で 0.8B / 2B / 使い分け を自由に切り替えられる)
+#   3 = 2 と同じ(1.2.x までの「使い分け」の番号。以前の自動起動の登録との互換用)
 function Servers-For([string]$c) {
+  $s08 = @{ Label = "0.8B"; Port = 8080; Args = (Server-Args $repo08 8080 $IdleSec) }
+  $s2  = @{ Label = "2B";   Port = 8081; Args = (Server-Args $repo2 8081 $IdleSec2) }
   switch ($c) {
-    "1" { return ,@(@{ Label = "0.8B"; Port = 8080; Args = (Server-Args $repo08 8080) }) }
-    "2" { return ,@(@{ Label = "2B";   Port = 8080; Args = (Server-Args $repo2 8080) }) }
-    "3" { return @(@{ Label = "0.8B"; Port = 8080; Args = (Server-Args $repo08 8080) },
-                   @{ Label = "2B";   Port = 8081; Args = (Server-Args $repo2 8081) }) }
+    "1" { return ,@($s08) }
+    "2" { return @($s08, $s2) }
+    "3" { return @($s08, $s2) }
     default { return $null }
   }
 }
@@ -102,10 +108,12 @@ function Ask-Choice([string]$purpose) {
   Write-Host ""
   Write-Host " $purpose モデルを選んでください:"
   Write-Host ""
-  Write-Host "   1. 0.8B のみ … 速くて軽い(ダウンロード 約 0.6 GB、使用中のメモリ 約 1.1 GB) ※おすすめ"
-  Write-Host "   2. 2B のみ   … 訳文が少し自然・速度は約半分(ダウンロード 約 1.8 GB、使用中のメモリ 約 3.7 GB)"
-  Write-Host "   3. 使い分け  … 短い語句は 0.8B、文章は 2B(ダウンロード 約 2.4 GB、使用中のメモリ 約 4.8 GB)"
-  Write-Host "                  ※ 拡張機能の設定画面で「使い分ける」モードを選んでください"
+  Write-Host "   1. 0.8B のみ      … 速くて軽い(ダウンロード 約 0.6 GB) ※おすすめ"
+  Write-Host "   2. 0.8B と 2B     … 拡張機能の設定画面で 0.8B / 2B / 使い分け を自由に切り替えられる"
+  Write-Host "                       (ダウンロード 約 2.4 GB)"
+  Write-Host ""
+  Write-Host "   どちらも、しばらく翻訳しないとモデルをメモリから下ろします(使っていないあいだは 1 つあたり約 50 MB)。"
+  Write-Host "   翻訳中のメモリは 0.8B が約 1.1 GB、2B が約 3.7 GB です。"
   Write-Host ""
   $c = Read-Host "番号を入力して Enter(そのまま Enter で 1)"
   if (-not $c) { $c = "1" }
@@ -141,7 +149,7 @@ if (-not $Choice -and -not $Background) {
 if (-not $Choice) { $Choice = "1" }
 $servers = Servers-For $Choice
 if (-not $servers) {
-  Write-Host "1・2・3 のどれかを入力してください。" -ForegroundColor Red
+  Write-Host "1 か 2 を入力してください。" -ForegroundColor Red
   Pause-Exit 1
 }
 

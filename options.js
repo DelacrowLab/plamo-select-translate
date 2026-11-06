@@ -1,6 +1,5 @@
 const DEFAULTS = {
-  serverMode: "single",
-  baseUrl: "http://127.0.0.1:8080/v1",
+  modelMode: "0.8b",
   shortUrl: "http://127.0.0.1:8080/v1",
   longUrl: "http://127.0.0.1:8081/v1",
   wordThreshold: 2,
@@ -12,7 +11,7 @@ const DEFAULTS = {
   useTitleContext: true,
   autoTranslate: true
 };
-const TEXT_KEYS = ["serverMode", "baseUrl", "shortUrl", "longUrl", "model", "targetLang", "altLang", "form"];
+const TEXT_KEYS = ["modelMode", "shortUrl", "longUrl", "model", "targetLang", "altLang", "form"];
 // start-server.ps1 がサーバーに設定する合言葉(background.js と同じ値)
 const LOCAL_SERVER_KEY = "plamo-select-translate";
 const BOOL_KEYS = ["useTitleContext", "autoTranslate"];
@@ -39,11 +38,22 @@ for (const id of ["targetLang", "altLang"]) {
 
 // モードに応じて、入力欄を切り替える
 function showMode() {
-  const hybrid = $("serverMode").value === "hybrid";
-  $("singleBox").hidden = hybrid;
-  $("hybridBox").hidden = !hybrid;
+  $("hybridBox").hidden = $("modelMode").value !== "hybrid";
 }
-$("serverMode").addEventListener("change", showMode);
+$("modelMode").addEventListener("change", showMode);
+
+// 1.2.x までの設定(serverMode / baseUrl)を新しい形に読み替える(background.js と同じ)
+function migrateSettings(sync) {
+  const s = { ...sync };
+  if (!s.modelMode) {
+    if (s.serverMode === "hybrid") s.modelMode = "hybrid";
+    else {
+      s.modelMode = "0.8b";
+      if (s.baseUrl && !s.shortUrl) s.shortUrl = s.baseUrl;
+    }
+  }
+  return s;
+}
 
 // API キーは端末間で同期しないよう chrome.storage.local に保存する
 Promise.all([chrome.storage.sync.get(null), chrome.storage.local.get("apiKey")]).then(async ([stored, local]) => {
@@ -53,7 +63,7 @@ Promise.all([chrome.storage.sync.get(null), chrome.storage.local.get("apiKey")])
     local.apiKey = stored.apiKey;
   }
   if ("apiKey" in stored) await chrome.storage.sync.remove("apiKey");
-  const s = { ...DEFAULTS, ...stored };
+  const s = { ...DEFAULTS, ...migrateSettings(stored) };
   for (const k of TEXT_KEYS) $(k).value = s[k];
   for (const k of BOOL_KEYS) $(k).checked = s[k];
   $("apiKey").value = local.apiKey || "";
@@ -80,9 +90,9 @@ function urlProblem(url) {
 
 // 今のモードで使う接続先の一覧([表示名, URL])
 function targets(v) {
-  return v.serverMode === "hybrid"
-    ? [["短い語句用(0.8B)", v.shortUrl], ["文章用(2B)", v.longUrl]]
-    : [["サーバー", v.baseUrl]];
+  if (v.modelMode === "hybrid") return [["0.8B", v.shortUrl], ["2B", v.longUrl]];
+  if (v.modelMode === "2b") return [["2B", v.longUrl]];
+  return [["0.8B", v.shortUrl]];
 }
 
 // PC 外のサーバーを使う場合だけ、そのオリジンへのアクセス許可を求める
@@ -96,7 +106,6 @@ function readForm() {
   const v = {};
   for (const k of TEXT_KEYS) v[k] = $(k).value.trim();
   for (const k of BOOL_KEYS) v[k] = $(k).checked;
-  v.baseUrl ||= DEFAULTS.baseUrl;
   v.shortUrl ||= DEFAULTS.shortUrl;
   v.longUrl ||= DEFAULTS.longUrl;
   v.model ||= DEFAULTS.model;
@@ -119,6 +128,7 @@ $("save").addEventListener("click", async () => {
   }
   const apiKey = $("apiKey").value.trim();
   await chrome.storage.sync.set(v);
+  await chrome.storage.sync.remove(["serverMode", "baseUrl"]); // 1.2.x までの古い設定は消す
   await chrome.storage.local.set({ apiKey });
   flash($("msg"), "保存しました", "ok");
   setTimeout(() => flash($("msg"), ""), 2000);
@@ -165,7 +175,14 @@ $("test").addEventListener("click", async () => {
   try { ok = await ensurePermission(list.map(([, u]) => u)); } catch (_) { ok = false; }
   if (!ok) return flash($("status"), "URL が正しくないか、サーバーへのアクセスが許可されていません", "ng");
   const results = await Promise.all(list.map(([, u]) => testServer(u, v)));
-  const lines = results.map(([, msg], i) => (list.length > 1 ? `${list[i][0]}: ` : "") + msg);
+  const lines = results.map(([good, msg], i) => {
+    const label = list[i][0];
+    // 2B のサーバーにつながらないときは、「0.8B のみ」で起動している可能性が高いので案内を足す
+    if (!good && label === "2B" && /接続できません/.test(msg)) {
+      msg += "\n  → 2B を使うには、翻訳サーバーのセットの「自動起動を設定する.bat」で「2. 0.8B と 2B」を選んでください(それまでは 0.8B で翻訳します)。";
+    }
+    return `${label}: ${msg}`;
+  });
   flash($("status"), lines.join("\n"), results.every(([good]) => good) ? "ok" : "ng");
 });
 

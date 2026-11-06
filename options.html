@@ -41,33 +41,29 @@
     <pre><code>winget install llama.cpp</code><button class="copy sub">コピー</button></pre></li>
   <li>「翻訳サーバーのセット」をダウンロードして展開します(zip で拡張機能を受け取った人は、同じフォルダに入っています)。
     <br><a href="https://github.com/DelacrowLab/plamo-select-translate/releases/latest" target="_blank" rel="noopener">翻訳サーバーのセットをダウンロード(GitHub)</a></li>
-  <li>セットの中の <code>自動起動を設定する.bat</code> をダブルクリックし、モデルを選びます。<br>
-    以後は PC にサインインするたびに、翻訳サーバーが裏で自動的に起動します。30 分使わないとモデルをメモリから下ろし、次の翻訳で自動的に戻ります(戻るときだけ数秒かかります)。
-    <small>自動起動しない場合は、使うたびに <code>start-server.bat</code> をダブルクリックして起動します。</small></li>
+  <li>セットの中の <code>自動起動を設定する.bat</code> をダブルクリックし、「1. 0.8B のみ」か「2. 0.8B と 2B」を選びます。<br>
+    以後は PC にサインインするたびに、翻訳サーバーが裏で自動的に起動します。しばらく使わないとモデルをメモリから下ろし、次の翻訳で自動的に戻ります(戻るときだけ数秒かかります)。
+    <small>「0.8B と 2B」を選んでおけば、下の「使うモデル」でいつでも切り替えられます。自動起動しない場合は、使うたびに <code>start-server.bat</code> をダブルクリックして起動します。</small></li>
   <li>下の「接続テスト」を押して、翻訳結果が表示されれば準備完了です。初回はモデルのダウンロードに数分かかります。</li>
 </ol>
 <details>
   <summary><small>Mac / Linux や、ターミナルから自分で起動する場合</small></summary>
-  <small>llama.cpp を入れてから、次のコマンドで起動します(2B を使う場合は <code>0.8b</code> を <code>2b</code> に、使い分けモードの 2B は <code>8080</code> を <code>8081</code> に変えます)。</small>
+  <small>llama.cpp を入れてから、次のコマンドで 0.8B を起動します。2B も使う場合は、別のターミナルで <code>0.8b</code> を <code>2b</code> に、<code>8080</code> を <code>8081</code> に変えたコマンドも起動します。</small>
   <pre><code>llama-server -hf pfnet/plamo-3-translate-0.8b-GGUF:Q4_K_M --host 127.0.0.1 --port 8080 --api-key plamo-select-translate --cors-origins https://plamo-select-translate.invalid --no-webui --no-slots -ngl 0 --device none -c 8192 --sleep-idle-seconds 1800</code><button class="copy sub">コピー</button></pre>
   <small><code>--api-key</code>(公開の合言葉)と <code>--cors-origins</code>(どのページにも許可しない値)は、閲覧中の Web ページが PC 上の翻訳サーバーを勝手に使えないようにするための設定です。GPU を使う場合は <code>-ngl 0 --device none</code> を外してください(一部の GPU では翻訳結果が壊れることがあります)。</small>
 </details>
 
-<h2>接続設定</h2>
-<label for="serverMode">モード</label>
-<select id="serverMode">
-  <option value="single">1 つのモデルを使う(サーバー起動時に 1 か 2 を選んだとき)</option>
-  <option value="hybrid">短い語句と文章でモデルを使い分ける(サーバー起動時に 3 を選んだとき)</option>
+<h2>使うモデル</h2>
+<label for="modelMode">モデル</label>
+<select id="modelMode">
+  <option value="0.8b">0.8B(速くて軽い)</option>
+  <option value="2b">2B(訳文が少し自然・速度は約半分)</option>
+  <option value="hybrid">使い分け(短い語句は 0.8B、文章は 2B)</option>
 </select>
-
-<div id="singleBox">
-  <label for="baseUrl">サーバー URL(OpenAI 互換)</label>
-  <input id="baseUrl" type="text">
-  <small>llama-server の既定は http://127.0.0.1:8080/v1、vLLM の既定は http://127.0.0.1:8000/v1 です。</small>
-</div>
+<small>2B と使い分けは、翻訳サーバーを「0.8B と 2B」で起動しているときに使えます。2B のサーバーが動いていないときは 0.8B で翻訳します。</small>
 
 <div id="hybridBox" hidden>
-  <label for="wordThreshold">短い語句とみなす単語数</label>
+  <label for="wordThreshold">0.8B で翻訳する単語数</label>
   <select id="wordThreshold">
     <option value="1">1 単語以下</option>
     <option value="2">2 単語以下</option>
@@ -75,22 +71,25 @@
     <option value="4">4 単語以下</option>
     <option value="5">5 単語以下</option>
   </select>
-  <small>この単語数以下なら短い語句用、それより多ければ文章用のサーバーで翻訳します。日本語や中国語も単語ごとに数えます(例: 「機械翻訳」は 2 単語、「今日はいい天気ですね」は 6 単語)。</small>
-  <label for="shortUrl">短い語句用のサーバー URL(0.8B)</label>
-  <input id="shortUrl" type="text">
-  <label for="longUrl">文章用のサーバー URL(2B)</label>
-  <input id="longUrl" type="text">
-  <small>片方のサーバーが動いていないときは、もう片方で翻訳します。</small>
+  <small>この単語数以下なら 0.8B、それより多ければ 2B で翻訳します。日本語や中国語も単語ごとに数えます(例: 「機械翻訳」は 2 単語、「今日はいい天気ですね」は 6 単語)。</small>
 </div>
-<small>PC 以外のサーバーは https:// の URL のみ指定できます。指定すると、そのサーバーへのアクセス許可を求められ、翻訳時には選択した文章(と、オンの場合はページタイトル)がそのサーバーに送られます。</small>
 
-<label for="model">モデル名</label>
-<input id="model" type="text">
-<small>vLLM では --served-model-name に指定した名前。llama-server では変更不要です。</small>
+<details>
+  <summary><small>詳細設定(自分でサーバーを用意する場合)</small></summary>
+  <label for="shortUrl">0.8B のサーバー URL(OpenAI 互換)</label>
+  <input id="shortUrl" type="text">
+  <label for="longUrl">2B のサーバー URL(OpenAI 互換)</label>
+  <input id="longUrl" type="text">
+  <small>翻訳サーバーのセットで起動した場合は変更不要です(0.8B は http://127.0.0.1:8080/v1、2B は http://127.0.0.1:8081/v1)。PC 以外のサーバーは https:// の URL のみ指定できます。指定すると、そのサーバーへのアクセス許可を求められ、翻訳時には選択した文章(と、オンの場合はページタイトル)がそのサーバーに送られます。</small>
 
-<label for="apiKey">API キー(任意)</label>
-<input id="apiKey" type="password" autocomplete="off">
-<small>翻訳サーバーのセットで起動したサーバーでは不要です(空欄のままにしてください)。入力した値はこの PC の Chrome にだけ保存され、ほかの端末には同期されません。</small>
+  <label for="model">モデル名</label>
+  <input id="model" type="text">
+  <small>vLLM では --served-model-name に指定した名前。llama-server では変更不要です。</small>
+
+  <label for="apiKey">API キー(任意)</label>
+  <input id="apiKey" type="password" autocomplete="off">
+  <small>翻訳サーバーのセットで起動したサーバーでは不要です(空欄のままにしてください)。入力した値はこの PC の Chrome にだけ保存され、ほかの端末には同期されません。</small>
+</details>
 
 <h2>翻訳設定</h2>
 <label for="targetLang">翻訳先の言語</label>

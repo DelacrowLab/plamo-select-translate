@@ -1,11 +1,10 @@
 // PLaMo 3 Translate をローカルサーバー経由で呼び出す。
 // llama.cpp の llama-server / vLLM どちらの OpenAI 互換 /v1/completions にも対応。
 const DEFAULTS = {
-  serverMode: "single", // "single": 1 台のサーバー / "hybrid": 単語数で 2 台を使い分け
-  baseUrl: "http://127.0.0.1:8080/v1",  // single モードの接続先
-  shortUrl: "http://127.0.0.1:8080/v1", // hybrid: 短い語句用(0.8B)
-  longUrl: "http://127.0.0.1:8081/v1",  // hybrid: 文章用(2B)
-  wordThreshold: 2,                     // hybrid: この単語数以下なら短い語句用を使う
+  modelMode: "0.8b",                    // "0.8b" / "2b" / "hybrid"(単語数で使い分け)
+  shortUrl: "http://127.0.0.1:8080/v1", // 0.8B のサーバー
+  longUrl: "http://127.0.0.1:8081/v1",  // 2B のサーバー
+  wordThreshold: 2,                     // hybrid: この単語数以下なら 0.8B を使う
   model: "plamo-3-translate",
   apiKey: "",
   targetLang: "ja", // 翻訳先
@@ -25,8 +24,21 @@ const MAX_CHARS = 5000;
 // API キーは端末間で同期しないよう chrome.storage.local に保存する(ほかの設定は sync)
 async function getSettings() {
   const [sync, local] = await Promise.all([chrome.storage.sync.get(null), chrome.storage.local.get("apiKey")]);
-  const s = { ...DEFAULTS, ...sync };
+  const s = { ...DEFAULTS, ...migrateSettings(sync) };
   s.apiKey = local.apiKey || "";
+  return s;
+}
+
+// 1.2.x までの設定(serverMode: "single" / "hybrid"、single の接続先 baseUrl)を新しい形に読み替える
+function migrateSettings(sync) {
+  const s = { ...sync };
+  if (!s.modelMode) {
+    if (s.serverMode === "hybrid") s.modelMode = "hybrid";
+    else {
+      s.modelMode = "0.8b";
+      if (s.baseUrl && !s.shortUrl) s.shortUrl = s.baseUrl;
+    }
+  }
   return s;
 }
 
@@ -156,11 +168,15 @@ function countWords(text) {
   return n;
 }
 
-// 使う接続先を決める。hybrid では、もう一方を予備として返す
+// 使う接続先を決める。[使うサーバー, 予備]。
+// 2B のサーバーが動いていない(「0.8B のみ」で起動した)ときは、0.8B で翻訳する
 function pickServers(text, s) {
-  if (s.serverMode !== "hybrid") return [s.baseUrl];
-  const short = countWords(text) <= Number(s.wordThreshold || 2);
-  return short ? [s.shortUrl, s.longUrl] : [s.longUrl, s.shortUrl];
+  if (s.modelMode === "2b") return [s.longUrl, s.shortUrl];
+  if (s.modelMode === "hybrid") {
+    const short = countWords(text) <= Number(s.wordThreshold || 2);
+    return short ? [s.shortUrl, s.longUrl] : [s.longUrl, s.shortUrl];
+  }
+  return [s.shortUrl];
 }
 
 async function streamTranslate({ text, title, pageLang }, port, signal) {
