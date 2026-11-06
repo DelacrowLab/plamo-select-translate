@@ -1,0 +1,5 @@
+# 配布用 zip(build.ps1 で作成。GitHub Releases に添付する)
+dist/
+# 以前アプリがコピーした重複フォルダ
+plamo-translate-ext/
+*.tmp

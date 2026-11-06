@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4c8df6"/>
+      <stop offset="1" stop-color="#1a5fd6"/>
+    </linearGradient>
+  </defs>
+  <!-- 16px 用: 細部を省き「あ」だけ大きく -->
+  <rect x="0" y="0" width="128" height="128" rx="28" fill="url(#bg)"/>
+  <text x="64" y="98" text-anchor="middle" font-family="Yu Gothic UI, Meiryo, sans-serif" font-weight="700" font-size="92" fill="#fff">あ</text>
+</svg>

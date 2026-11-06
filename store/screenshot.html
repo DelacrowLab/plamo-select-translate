@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<style>
+  body{margin:0;width:1280px;height:800px;background:#e9edf3;font-family:"Segoe UI","Yu Gothic UI",sans-serif;overflow:hidden}
+  .win{position:absolute;inset:32px 48px 0;background:#fff;border-radius:10px 10px 0 0;box-shadow:0 8px 32px rgba(0,0,0,.15);overflow:hidden}
+  .bar{height:44px;background:#f1f3f4;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid #dadce0}
+  .dot{width:12px;height:12px;border-radius:50%;background:#dadce0}
+  .url{flex:1;margin-left:16px;height:28px;border-radius:14px;background:#fff;color:#5f6368;font-size:13px;display:flex;align-items:center;padding:0 14px}
+  .ext{width:24px;height:24px}
+  article{padding:40px 120px;color:#202124;font-family:Georgia,"Times New Roman",serif}
+  h1{font-size:34px;margin:0 0 8px}
+  .meta{color:#5f6368;font:14px "Segoe UI",sans-serif;margin-bottom:24px}
+  p{font-size:19px;line-height:1.75;margin:0 0 18px}
+  mark{background:#b3d3fd;color:inherit}
+  .panel{position:absolute;left:120px;top:328px;width:max-content;max-width:640px;box-sizing:border-box;padding:10px 14px;
+    background:#fff;color:#1f2328;border:1px solid #1a73e8;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.2);
+    font:15px/1.6 "Yu Gothic UI","Yu Gothic",sans-serif}
+  .callout{position:absolute;right:72px;bottom:56px;background:#1a5fd6;color:#fff;border-radius:12px;padding:18px 24px;
+    font:600 22px/1.5 "Yu Gothic UI",sans-serif;box-shadow:0 8px 24px rgba(26,95,214,.35)}
+  .callout small{display:block;font-weight:400;font-size:15px;opacity:.9}
+</style></head>
+<body>
+<div class="win">
+  <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+    <div class="url">example.com/blog/local-ai-translation</div><img class="ext" src="../icons/icon48.png"></div>
+  <article>
+    <h1>Why On-Device Translation Matters</h1>
+    <div class="meta">Tech Notes · 5 min read</div>
+    <p>Machine translation has become part of everyday browsing. Yet most tools still send every sentence you read to a remote server.</p>
+    <p><mark>Running a compact translation model locally keeps your reading private and responds almost instantly, even without an internet connection.</mark></p>
+    <p style="margin-top:100px">Small models have improved dramatically. A model with less than one billion parameters can now rival much larger systems on everyday text.</p>
+  </article>
+  <div class="panel">コンパクトな翻訳モデルをローカルで動作させれば、インターネット接続がなくても閲覧内容が非公開に保たれ、ほぼ即座に応答します。</div>
+  <div class="callout">選択するだけで、すぐ翻訳<small>PC 上の PLaMo 3 Translate で動作 · 文章は外部に送信されません</small></div>
+</div>
+</body></html>

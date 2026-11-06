@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4c8df6"/>
+      <stop offset="1" stop-color="#1a5fd6"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="url(#bg)"/>
+  <!-- 左上: A、右下: あ。細い斜線で「変換」を表す -->
+  <path d="M34 92 L94 32" stroke="#fff" stroke-opacity=".35" stroke-width="3" stroke-linecap="round"/>
+  <text x="40" y="58" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-weight="600" font-size="40" fill="#fff">A</text>
+  <text x="88" y="104" text-anchor="middle" font-family="Yu Gothic UI, Meiryo, sans-serif" font-weight="700" font-size="40" fill="#fff">あ</text>
+</svg>
