@@ -60,7 +60,7 @@
   <option value="2b">2B(訳文が少し自然・速度は約半分)</option>
   <option value="hybrid">使い分け(短い語句は 0.8B、文章は 2B)</option>
 </select>
-<small>2B と使い分けは、翻訳サーバーを「0.8B と 2B」で起動しているときに使えます。2B のサーバーが動いていないときは 0.8B で翻訳します。</small>
+<small>2B と使い分けは、翻訳サーバーを「0.8B と 2B」で起動しているときに使えます。2B のサーバーが動いていないときは 0.8B で翻訳し、翻訳パネルにその旨を表示します。</small>
 
 <div id="hybridBox" hidden>
   <label for="wordThreshold">0.8B で翻訳する単語数</label>
@@ -97,7 +97,7 @@
 
 <label for="altLang">選択テキストが日本語だったときの翻訳先</label>
 <select id="altLang"></select>
-<small>翻訳先が日本語のときだけ使います。「なし」にすると、日本語の文章を選んでも翻訳しません(パネルも出ません)。</small>
+<small>翻訳先が日本語のときだけ使います。「なし」にすると、日本語の文章を選んでも翻訳しません(文字を選んだだけのときはパネルも出ません。右クリックや Alt+T で翻訳しようとしたときは、翻訳しない設定であることを表示します)。</small>
 
 <label for="form">日本語の文体</label>
 <select id="form">

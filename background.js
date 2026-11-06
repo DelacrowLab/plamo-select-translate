@@ -35,8 +35,9 @@ function migrateSettings(sync) {
   if (!s.modelMode) {
     if (s.serverMode === "hybrid") s.modelMode = "hybrid";
     else {
+      // 1.2.x の single モードでは baseUrl が実際の接続先(shortUrl は使われていなかった)
       s.modelMode = "0.8b";
-      if (s.baseUrl && !s.shortUrl) s.shortUrl = s.baseUrl;
+      if (s.baseUrl) s.shortUrl = s.baseUrl;
     }
   }
   return s;
@@ -188,8 +189,10 @@ async function streamTranslate({ text, title, pageLang }, port, signal) {
   try {
     await streamFrom(primary, text, title, s, port, signal);
   } catch (e) {
-    // 使い分けモードで片方のサーバーが動いていないときは、もう片方で翻訳する
+    // 選んだモデルのサーバーが動いていないときは、もう片方で翻訳し、そのことをパネルに表示する
     if (fallback && e instanceof TypeError && !port.__gotText) {
+      const label = (url) => (url === s.longUrl ? "2B" : "0.8B");
+      safePost(port, { note: `${label(primary)} のサーバーに接続できないため、${label(fallback)} で翻訳しました。` });
       await streamFrom(fallback, text, title, s, port, signal);
     } else {
       throw e;

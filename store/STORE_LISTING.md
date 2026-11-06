@@ -40,7 +40,7 @@ Chrome Web Store デベロッパー ダッシュボード(https://chrome.google.
 ・日本語の文体(です・ます調/だ・である調)を指定可能
 
 ■ 送信するデータについて
-初期設定では、テキストを選択した時点で自動的に翻訳します(設定でオフにできます)。翻訳のため、選択した文章(埋め込みフレーム内を含む)とページタイトル(設定でオフにできます)を、PC 上の翻訳サーバー(127.0.0.1)に送ります。設定で PC 以外のサーバー(https のみ)を指定した場合は、そのサーバーに送ります。翻訳した文章や結果は保存しません。
+初期設定では、テキストを選択した時点で自動的に翻訳します(設定でオフにできます)。翻訳のため、選択した文章(埋め込みフレーム内を含む)とページタイトル(設定でオフにできます)を、PC 上の翻訳サーバー(127.0.0.1。0.8B はポート 8080、2B はポート 8081)に送ります。設定で PC 以外のサーバー(https のみ)を指定した場合は、そのサーバーに送ります。翻訳した文章や結果は保存しません。
 
 ■ 使う前の準備(Windows・最初の 1 回だけ)
 この拡張機能を使うには、PC 上で翻訳サーバーを動かす必要があります。
@@ -88,7 +88,7 @@ https://github.com/DelacrowLab/plamo-select-translate/blob/main/PRIVACY.md
 
 **審査担当者へのメモ(「審査担当者への注記」欄など):**
 ```
-This extension sends the selected text only to a translation server running on the user's own PC (http://127.0.0.1:8080, llama.cpp llama-server with the PLaMo 3 Translate model). Without that local server, translation shows a "cannot connect to the translation server" message by design. Setup instructions and the server kit: https://github.com/DelacrowLab/plamo-select-translate
+This extension sends the selected text (and, if enabled, the page title) only to translation servers running on the user's own PC: http://127.0.0.1:8080 (PLaMo 3 Translate 0.8B, default) and, when the user selects the 2B model or the hybrid mode, http://127.0.0.1:8081 (PLaMo 3 Translate 2B). Both are llama.cpp llama-server instances started by the user. Without that local server, translation shows a "cannot connect to the translation server" message by design. Setup instructions and the server kit: https://github.com/DelacrowLab/plamo-select-translate
 ```
 
 ## 審査で注意すること

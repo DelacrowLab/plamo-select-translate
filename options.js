@@ -48,8 +48,9 @@ function migrateSettings(sync) {
   if (!s.modelMode) {
     if (s.serverMode === "hybrid") s.modelMode = "hybrid";
     else {
+      // 1.2.x の single モードでは baseUrl が実際の接続先(shortUrl は使われていなかった)
       s.modelMode = "0.8b";
-      if (s.baseUrl && !s.shortUrl) s.shortUrl = s.baseUrl;
+      if (s.baseUrl) s.shortUrl = s.baseUrl;
     }
   }
   return s;

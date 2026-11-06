@@ -117,6 +117,7 @@
     const myPort = port;
     // しばらく使っていなかったときは、サーバーがモデルを読み込み直すため数秒かかる。待っていることを知らせる
     let gotAny = false;
+    let note = "";
     const hintTimer = setTimeout(() => {
       if (myPort === port && !gotAny) { box.className = "box busy hint"; box.textContent = "準備中…(しばらく使っていなかったときは数秒かかります)"; }
     }, 1500);
@@ -135,9 +136,13 @@
         else box.hidden = true;
         return;
       }
+      if (m.note) { note = m.note; return; } // 予備のモデルで翻訳したときの知らせ(訳文の後ろに表示)
       if (m.delta) box.textContent += m.delta;
       if (m.error) { box.className = "box err"; box.textContent = m.error; }
-      if (m.done) box.className = "box";
+      if (m.done) {
+        box.className = "box";
+        if (note) box.textContent += "\n\n(" + note + ")";
+      }
       // 翻訳が終わったら通信路はもう不要なので閉じる(開いたままだとページ移動時に警告が出る)
       if (m.done || m.error) closePort();
     });
