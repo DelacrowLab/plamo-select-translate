@@ -43,4 +43,4 @@
 
 ## お問い合わせ
 
-https://github.com/SIGMA-dela/plamo-select-translate/issues
+https://github.com/DelacrowLab/plamo-select-translate/issues

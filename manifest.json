@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "PLaMo 選択翻訳",
   "short_name": "PLaMo翻訳",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "選択したテキストを、PC 上で動かす PLaMo 3 Translate ですぐに翻訳します。初期設定では翻訳内容は外部に送信されません。",
   "permissions": ["storage", "contextMenus"],
   "host_permissions": ["http://localhost/*", "http://127.0.0.1/*"],

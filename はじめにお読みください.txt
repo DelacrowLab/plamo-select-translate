@@ -7,7 +7,7 @@ Web ページの文章を選ぶだけで、すぐ下に翻訳が出る Chrome �
 ・英語などを選ぶと → 日本語に翻訳
 ・日本語を選ぶと   → 英語に翻訳
 
-最新版・問い合わせ: https://github.com/SIGMA-dela/plamo-select-translate
+最新版・問い合わせ: https://github.com/DelacrowLab/plamo-select-translate
 
 
 ■ 準備(最初の 1 回だけ)
@@ -44,7 +44,7 @@ Web ページの文章を選ぶだけで、すぐ下に翻訳が出る Chrome �
 
   「自動起動を設定する.bat」をダブルクリックし、使うモデルの番号を入力して Enter を押します。
   ※ ストアから入れた場合は、先に「翻訳サーバーのセット」を下のページからダウンロードして展開してください。
-      https://github.com/SIGMA-dela/plamo-select-translate/releases/latest
+      https://github.com/DelacrowLab/plamo-select-translate/releases/latest
 
     1. 0.8B のみ … 速くて軽い(ダウンロード 約 0.6 GB、使用中のメモリ 約 1.1 GB) ※おすすめ
     2. 2B のみ   … 訳文が少し自然・速度は約半分(ダウンロード 約 1.8 GB、使用中のメモリ 約 3.7 GB)

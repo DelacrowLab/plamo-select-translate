@@ -13,7 +13,7 @@ Web ページで選択したテキストを、自分の PC で動かす **PLaMo 
 
 ## ダウンロード
 
-[Releases](https://github.com/SIGMA-dela/plamo-select-translate/releases/latest) に次の 2 つがあります。
+[Releases](https://github.com/DelacrowLab/plamo-select-translate/releases/latest) に次の 2 つがあります。
 
 | ファイル | 内容 |
 |---|---|

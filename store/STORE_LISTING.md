@@ -5,10 +5,10 @@ Chrome Web Store デベロッパー ダッシュボード(https://chrome.google.
 
 ## 提出前にやること
 
-1. GitHub に `SIGMA-dela/plamo-select-translate` リポジトリを作り、このフォルダの中身を置く(PRIVACY.md が公開される)
+1. GitHub に `DelacrowLab/plamo-select-translate` リポジトリを作り、このフォルダの中身を置く(PRIVACY.md が公開される)
 2. GitHub の Releases に `dist/plamo-translate-server-<版>.zip`(翻訳サーバーのセット)と
    `dist/plamo-translate-ext-<版>.zip`(個人配布用)を添付して公開する
-   → 設定画面・説明書のダウンロードリンク https://github.com/SIGMA-dela/plamo-select-translate/releases/latest が有効になる
+   → 設定画面・説明書のダウンロードリンク https://github.com/DelacrowLab/plamo-select-translate/releases/latest が有効になる
 3. 下の内容でストアに提出する
 
 ## アップロードするファイル
@@ -46,7 +46,7 @@ Chrome Web Store デベロッパー ダッシュボード(https://chrome.google.
 この拡張機能を使うには、PC 上で翻訳サーバーを動かす必要があります。
 1. llama.cpp をインストール: ターミナルで「winget install llama.cpp」
 2. 翻訳サーバーのセットをダウンロード:
-   https://github.com/SIGMA-dela/plamo-select-translate/releases/latest
+   https://github.com/DelacrowLab/plamo-select-translate/releases/latest
 3. セットの中の「自動起動を設定する.bat」を実行してモデルを選ぶ
    (以後、PC にサインインすると翻訳サーバーが裏で自動起動します。30 分使わないとメモリから下ろします)
 4. 拡張機能の設定画面で「接続テスト」を押して確認
@@ -84,11 +84,11 @@ PLaMo 3 Translate は Preferred Networks, Inc. が PLaMo コミュニティラ�
   - 信用度の判断や融資の目的でユーザーデータを使用、転送しない
 
 **プライバシー ポリシーの URL:**
-https://github.com/SIGMA-dela/plamo-select-translate/blob/main/PRIVACY.md
+https://github.com/DelacrowLab/plamo-select-translate/blob/main/PRIVACY.md
 
 **審査担当者へのメモ(「審査担当者への注記」欄など):**
 ```
-This extension sends the selected text only to a translation server running on the user's own PC (http://127.0.0.1:8080, llama.cpp llama-server with the PLaMo 3 Translate model). Without that local server, translation shows a "cannot connect to the translation server" message by design. Setup instructions and the server kit: https://github.com/SIGMA-dela/plamo-select-translate
+This extension sends the selected text only to a translation server running on the user's own PC (http://127.0.0.1:8080, llama.cpp llama-server with the PLaMo 3 Translate model). Without that local server, translation shows a "cannot connect to the translation server" message by design. Setup instructions and the server kit: https://github.com/DelacrowLab/plamo-select-translate
 ```
 
 ## 審査で注意すること
