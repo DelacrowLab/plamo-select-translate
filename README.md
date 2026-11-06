@@ -1,4 +1,4 @@
-# PLaMo 選択翻訳
+# PLaMo クイック翻訳
 
 **Built with PLaMo**
 

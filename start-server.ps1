@@ -1,4 +1,4 @@
-﻿# PLaMo 選択翻訳 - 翻訳サーバーの起動・自動起動の設定
+﻿# PLaMo クイック翻訳 - 翻訳サーバーの起動・自動起動の設定
 #
 #   start-server.bat            … メニューを出して、このウィンドウでサーバーを起動(閉じると停止)
 #   自動起動を設定する.bat      … PC にサインインしたとき、裏で自動的にサーバーを起動するよう登録
@@ -32,7 +32,9 @@ $IdleSec  = 1800                       # 30 分使わなければ休止
 $AppDir   = Join-Path $env:LOCALAPPDATA "PLaMoSelectTranslate"
 $AppScript = Join-Path $AppDir "start-server.ps1"   # 自動起動で実行するコピー
 $NoCorsOrigin = "https://plamo-select-translate.invalid"   # 実在しないオリジン(= どのページにも許可しない)
-$Shortcut = if ($ShortcutPath) { $ShortcutPath } else { Join-Path ([Environment]::GetFolderPath("Startup")) "PLaMo 選択翻訳サーバー.lnk" }
+$Shortcut = if ($ShortcutPath) { $ShortcutPath } else { Join-Path ([Environment]::GetFolderPath("Startup")) "PLaMo クイック翻訳サーバー.lnk" }
+# 以前の名前(1.2.x まで「PLaMo 選択翻訳」)で登録された自動起動のショートカット。登録し直すときや解除するときに一緒に消す
+$OldShortcuts = if ($ShortcutPath) { @() } else { @(Join-Path ([Environment]::GetFolderPath("Startup")) "PLaMo 選択翻訳サーバー.lnk") }
 $repo08   = "pfnet/plamo-3-translate-0.8b-GGUF:Q4_K_M"
 $repo2    = "pfnet/plamo-3-translate-2b-GGUF:Q4_K_M"
 
@@ -112,7 +114,11 @@ function Ask-Choice([string]$purpose) {
 
 # ---------- 自動起動の解除 ----------
 if ($Uninstall) {
-  if (Test-Path $Shortcut) { Remove-Item $Shortcut -Force; Write-Host "自動起動の登録を解除しました。" }
+  $removed = $false
+  foreach ($l in @($Shortcut) + $OldShortcuts) {
+    if (Test-Path $l) { Remove-Item $l -Force; $removed = $true }
+  }
+  if ($removed) { Write-Host "自動起動の登録を解除しました。" }
   else { Write-Host "自動起動は登録されていませんでした。" }
   if ((Test-Path $AppScript) -and ($AppScript -ne $PSCommandPath)) { Remove-Item $AppScript -Force -ErrorAction SilentlyContinue }
   $stopped = @(Stop-OurServers)
@@ -120,7 +126,7 @@ if ($Uninstall) {
   Pause-Exit 0
 }
 
-$Host.UI.RawUI.WindowTitle = "PLaMo 選択翻訳 - 翻訳サーバー"
+$Host.UI.RawUI.WindowTitle = "PLaMo クイック翻訳 - 翻訳サーバー"
 $exe = Find-LlamaServer (-not $Background)
 if (-not $exe -and -not $DryRun) {
   if ($Background) { Write-Log "llama-server が見つからないため起動できませんでした(winget install llama.cpp が必要です)"; exit 1 }
@@ -149,13 +155,14 @@ if ($Install) {
   # このスクリプトを専用フォルダにコピーし、自動起動ではコピーの方を実行する
   New-Item -ItemType Directory -Force $AppDir | Out-Null
   if ($PSCommandPath -ne $AppScript) { Copy-Item $PSCommandPath $AppScript -Force }
+  foreach ($l in $OldShortcuts) { if (Test-Path $l) { Remove-Item $l -Force } }   # 古い名前のショートカットは消す(二重登録を防ぐ)
   $ws = New-Object -ComObject WScript.Shell
   $lnk = $ws.CreateShortcut($Shortcut)
   $lnk.TargetPath = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
   # -ExecutionPolicy Bypass: 既定の実行ポリシーでは .ps1 を実行できない PC が多いため、このスクリプトに限って許可する
   $lnk.Arguments = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$AppScript`" -Background -Choice $Choice"
   $lnk.WindowStyle = 7   # 最小化で起動(画面に出さない)
-  $lnk.Description = "PLaMo 選択翻訳の翻訳サーバーを裏で起動します"
+  $lnk.Description = "PLaMo クイック翻訳の翻訳サーバーを裏で起動します"
   $lnk.Save()
   Stop-OurServers | Out-Null   # 以前の設定で動いているサーバーがあれば止めて、選んだ設定で起動し直す
   Start-Sleep -Milliseconds 500

@@ -93,5 +93,5 @@ This extension sends the selected text only to a translation server running on t
 
 ## 審査で注意すること
 
-- 名前に「PLaMo」(Preferred Networks の商標の可能性あり)を含めています。商標の扱いで指摘を受けた場合は、「選択翻訳 for PLaMo」のように、公式製品ではないとわかる名前に変えるのが無難です。
+- 名前に「PLaMo」(Preferred Networks の商標の可能性あり)を含めています。商標の扱いで指摘を受けた場合は、「クイック翻訳 for PLaMo」のように、公式製品ではないとわかる名前に変えるのが無難です。
 - 審査担当者は翻訳サーバーを用意しないことが多いため、「サーバーがないと動かない」ことを説明欄と注記に明記しています。
