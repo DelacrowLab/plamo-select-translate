@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>クイック翻訳</title>
+<style>
+  :root{--fg:#1f2328;--muted:#59636e;--bg:#fff;--ng:#cf222e}
+  @media (prefers-color-scheme:dark){:root{--fg:#e6edf3;--muted:#9198a1;--bg:#16181c;--ng:#f85149}}
+  body{font:15px/1.7 system-ui,"Yu Gothic UI","Yu Gothic",sans-serif;margin:16px;color:var(--fg);background:var(--bg)}
+  #out{white-space:pre-wrap;word-break:break-word}
+  .hint{color:var(--muted)} .err{color:var(--ng)}
+</style>
+</head>
+<body>
+<div id="out" class="hint">翻訳しています…</div>
+<script src="result.js"></script>
+</body>
+</html>

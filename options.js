@@ -7,14 +7,17 @@ const DEFAULTS = {
   apiKey: "",
   targetLang: "ja",
   altLang: "", // "" = 日本語の文章は翻訳しない
+  sourceLangs: DEFAULT_SOURCE_LANGS,
+  keepTerms: "",
+  autoKeepNames: false,
   form: "",
   useTitleContext: true,
   autoTranslate: true
 };
-const TEXT_KEYS = ["modelMode", "shortUrl", "longUrl", "model", "targetLang", "altLang", "form"];
+const TEXT_KEYS = ["modelMode", "shortUrl", "longUrl", "model", "targetLang", "altLang", "form", "keepTerms"];
 // start-server.ps1 がサーバーに設定する合言葉(background.js と同じ値)
 const LOCAL_SERVER_KEY = "plamo-select-translate";
-const BOOL_KEYS = ["useTitleContext", "autoTranslate"];
+const BOOL_KEYS = ["useTitleContext", "autoTranslate", "autoKeepNames"];
 const $ = (id) => document.getElementById(id);
 
 // PLaMo 3 Translate の対応言語(よく使うものを先頭に)
@@ -34,6 +37,43 @@ const LANGS = [
 $("altLang").add(new Option("なし(翻訳しない)", ""));
 for (const id of ["targetLang", "altLang"]) {
   for (const [code, name] of LANGS) $(id).add(new Option(`${name} (${code})`, code));
+}
+
+// 「翻訳する言語」のチェックボックスを作る
+for (const [code, name] of LANGS) {
+  const label = document.createElement("label");
+  const box = document.createElement("input");
+  box.type = "checkbox";
+  box.value = code;
+  const text = document.createElement("span");
+  text.textContent = name;
+  label.append(box, " ", text);
+  $("sourceLangs").append(label);
+}
+const sourceBoxes = () => [...$("sourceLangs").querySelectorAll("input")];
+
+// 翻訳先と同じ言語は選べないようにして、選択中の言語を表示する
+function refreshSourceLangs() {
+  const target = $("targetLang").value;
+  const names = [];
+  for (const box of sourceBoxes()) {
+    const name = LANGS.find(([code]) => code === box.value)[1];
+    const isTarget = box.value === target;
+    box.disabled = isTarget;
+    box.nextElementSibling.textContent = isTarget ? `${name}(翻訳先)` : name;
+    if (box.checked && !isTarget) names.push(name);
+  }
+  $("sourceSummary").textContent = names.length
+    ? `選択中: ${names.slice(0, 5).join("、")}${names.length > 5 ? ` ほか ${names.length - 5} 言語` : ""}`
+    : "選択されていません";
+}
+$("sourceLangs").addEventListener("change", refreshSourceLangs);
+$("targetLang").addEventListener("change", refreshSourceLangs);
+for (const [id, checked] of [["sourceAll", true], ["sourceNone", false]]) {
+  $(id).addEventListener("click", () => {
+    for (const box of sourceBoxes()) box.checked = checked;
+    refreshSourceLangs();
+  });
 }
 
 // モードに応じて、入力欄を切り替える
@@ -69,7 +109,9 @@ Promise.all([chrome.storage.sync.get(null), chrome.storage.local.get("apiKey")])
   for (const k of BOOL_KEYS) $(k).checked = s[k];
   $("apiKey").value = local.apiKey || "";
   $("wordThreshold").value = String(s.wordThreshold);
+  for (const box of sourceBoxes()) box.checked = s.sourceLangs.includes(box.value);
   showMode();
+  refreshSourceLangs();
 });
 
 function isLocal(url) {
@@ -111,6 +153,7 @@ function readForm() {
   v.longUrl ||= DEFAULTS.longUrl;
   v.model ||= DEFAULTS.model;
   v.wordThreshold = Number($("wordThreshold").value) || DEFAULTS.wordThreshold;
+  v.sourceLangs = sourceBoxes().filter((box) => box.checked).map((box) => box.value);
   return v;
 }
 
@@ -121,6 +164,9 @@ function flash(el, text, cls) {
 
 $("save").addEventListener("click", async () => {
   const v = readForm();
+  if (!v.sourceLangs.some((l) => l !== v.targetLang)) {
+    return flash($("msg"), "「翻訳する言語」を 1 つ以上選んでください(翻訳先と同じ言語は数えません)", "ng");
+  }
   const urls = targets(v).map(([, u]) => u);
   const problem = urls.map(urlProblem).find(Boolean);
   if (problem) return flash($("msg"), problem, "ng");

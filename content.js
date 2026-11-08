@@ -4,18 +4,11 @@
 
   let host = null;
   let box = null;
+  let closeBtn = null;
   let port = null;
   let lastText = "";
   const RELOAD_MSG = "拡張機能が更新されました。このページを再読み込みしてから、もう一度お試しください。";
-  const SKIP_MSG = "日本語の文章は翻訳しない設定です(設定画面の「選択テキストが日本語だったときの翻訳先」で変更できます)。";
-
-  // background.js と同じ判定: ひらがな・カタカナを含むか、漢字だけで日本語のページなら日本語とみなす
-  function looksJapanese(text, pageLang) {
-    if (/[぀-ヿ]/.test(text)) return true;
-    const hasHan = /\p{Script=Han}/u.test(text);
-    const hasLatin = /\p{Script=Latin}/u.test(text);
-    return hasHan && !hasLatin && /^ja\b/i.test(pageLang || "");
-  }
+  const PDF_HINT = "PDF では、文章を選んでから右クリック →「クイック翻訳で翻訳」を選んでください。";
 
   function ensureUI() {
     if (host) return;
@@ -33,10 +26,14 @@
         .hint{color:#59636e}
         .busy::after{content:"▍";animation:b 1s steps(2) infinite}
         @keyframes b{50%{opacity:0}}
+        .close{position:fixed;top:20px;right:24px;border:0;background:none;font:18px/1 system-ui;cursor:pointer;color:#59636e}
         @media (prefers-color-scheme:dark){.box{background:#1f2328;color:#e6edf3;border-color:#4493f8}}
       </style>
-      <div class="box" hidden></div>`;
+      <div class="box" hidden></div>
+      <button class="close" hidden aria-label="閉じる">×</button>`;
     box = root.querySelector(".box");
+    closeBtn = root.querySelector(".close");
+    closeBtn.addEventListener("click", hide);
     document.documentElement.appendChild(host);
   }
 
@@ -59,9 +56,16 @@
     if (port) { try { port.disconnect(); } catch (_) {} port = null; }
   }
 
+  // PDF の上では選択位置が分からず、PDF をクリックしてもページに伝わらないので、右上に閉じるボタン付きで出す
+  function placeForPdf() {
+    box.style.cssText = "position:fixed;top:12px;right:16px;padding-right:40px";
+    closeBtn.hidden = false;
+  }
+
   function hide() {
     closePort();
     if (box) box.hidden = true;
+    if (closeBtn) closeBtn.hidden = true;
   }
 
   // 選択中のテキストと、その位置を返す。入力欄(textarea / テキスト系の input)の中の選択にも対応する。
@@ -88,8 +92,9 @@
   }
 
   // explicit: 右クリックメニューや Alt+T で翻訳を頼まれたとき true(文字を選んだだけの自動翻訳では false)
-  function translate(explicit = false) {
-    const picked = getSelected();
+  // pdfText: PDF ビューアーの選択はページから読めないので、右クリックメニューから受け取った文章を使う
+  function translate(explicit = false, pdfText = "") {
+    const picked = pdfText ? { text: pdfText, rect: null } : getSelected();
     if (!picked) return;
     const { text, rect } = picked;
     lastText = text;
@@ -100,6 +105,9 @@
     box.textContent = "";
     box.hidden = false;
 
+    if (!rect) {
+      placeForPdf();
+    } else {
     const top = rect.bottom + window.scrollY + 8;
     // パネルが右端で折り返されて細くならないよう、最大幅ぶんの余白を確保して配置する
     const vw = document.documentElement.clientWidth;
@@ -107,6 +115,7 @@
     const left = Math.max(window.scrollX + 16, Math.min(rect.left + window.scrollX, window.scrollX + vw - panelW - 16));
     box.style.top = top + "px";
     box.style.left = left + "px";
+    }
 
     if (!alive()) return showMessage(RELOAD_MSG);
     try {
@@ -132,7 +141,7 @@
         // 日本語の文章を「翻訳しない」設定のとき。右クリックや Alt+T で頼まれた場合だけ理由を表示する
         clearTimeout(hintTimer);
         closePort();
-        if (explicit) { box.className = "box hint"; box.textContent = SKIP_MSG; }
+        if (explicit) { box.className = "box hint"; box.textContent = m.message; }
         else box.hidden = true;
         return;
       }
@@ -170,15 +179,14 @@
       if (!alive()) return;
       let s;
       try {
-        s = await chrome.storage.sync.get(["autoTranslate", "targetLang", "altLang"]);
+        s = await chrome.storage.sync.get(["autoTranslate", "targetLang", "altLang", "sourceLangs"]);
       } catch (_) {
         return;
       }
       if (s.autoTranslate === false) return;
-      // 日本語の文章を「翻訳しない」設定なら、パネルを出さずに何もしない
-      const targetLang = s.targetLang || "ja";
-      const altLang = s.altLang ?? "";
-      if (targetLang === "ja" && !altLang && looksJapanese(picked.text, document.documentElement.lang)) return;
+      // 翻訳しない文章なら、パネルを出さずに何もしない
+      const settings = { targetLang: s.targetLang || "ja", altLang: s.altLang ?? "", sourceLangs: s.sourceLangs };
+      if (!(await decideTarget(picked.text, settings, document.documentElement.lang))) return;
       translate();
     }, 10);
   });
@@ -192,7 +200,24 @@
   // ページを離れるとき(「戻る」用の一時保存を含む)は、Chrome に閉じられる前に自分で閉じる
   window.addEventListener("pagehide", hide);
 
-  chrome.runtime.onMessage.addListener((m) => {
-    if (m.type === "translate-selection") translate(true);
+  // このページで受け持てたら true を返す(返さないと、右クリックのときは別ウィンドウで翻訳する)
+  chrome.runtime.onMessage.addListener((m, _sender, respond) => {
+    if (m.type !== "translate-selection") return;
+    const isPdf = document.contentType === "application/pdf";
+    if (getSelected()) {
+      translate(true);
+    } else if (isPdf && m.selectionText) {
+      translate(true, m.selectionText);
+    } else if (isPdf) {
+      ensureUI();
+      hide();
+      box.className = "box hint";
+      box.textContent = PDF_HINT;
+      box.hidden = false;
+      placeForPdf();
+    } else {
+      return;
+    }
+    respond(true);
   });
 })();

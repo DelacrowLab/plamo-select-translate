@@ -7,7 +7,7 @@ $root = $PSScriptRoot
 $version = (Get-Content (Join-Path $root "manifest.json") -Raw -Encoding UTF8 | ConvertFrom-Json).version
 
 $extFiles = @(
-  "manifest.json", "background.js", "content.js", "options.html", "options.js",
+  "manifest.json", "background.js", "content.js", "shared.js", "options.html", "options.js", "result.html", "result.js",
   "icons\icon16.png", "icons\icon32.png", "icons\icon48.png", "icons\icon128.png", "LICENSE"
 )
 $serverFiles = @(

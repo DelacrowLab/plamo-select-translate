@@ -1,3 +1,5 @@
+importScripts("shared.js");
+
 // PLaMo 3 Translate をローカルサーバー経由で呼び出す。
 // llama.cpp の llama-server / vLLM どちらの OpenAI 互換 /v1/completions にも対応。
 const DEFAULTS = {
@@ -9,6 +11,9 @@ const DEFAULTS = {
   apiKey: "",
   targetLang: "ja", // 翻訳先
   altLang: "",      // 選択テキストが日本語だったときの翻訳先("" = 翻訳しない)
+  sourceLangs: DEFAULT_SOURCE_LANGS, // 翻訳する言語
+  keepTerms: "",    // 翻訳せずに残す語(1 行に 1 語)
+  autoKeepNames: false, // 文の途中で大文字から始まる語も残す
   form: "",         // "" | "plain" | "polite"(日本語出力時の文体)
   useTitleContext: true,
   autoTranslate: true
@@ -67,7 +72,7 @@ chrome.runtime.onInstalled.addListener((details) => {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
       id: "plamo-translate",
-      title: "PLaMo で翻訳",
+      title: "クイック翻訳で翻訳",
       contexts: ["selection"]
     });
   });
@@ -78,7 +83,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 chrome.action.onClicked.addListener(() => chrome.runtime.openOptionsPage());
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "plamo-translate" && tab?.id) sendToTab(tab.id);
+  if (info.menuItemId === "plamo-translate" && tab?.id) sendToTab(tab.id, info.selectionText);
 });
 
 chrome.commands.onCommand.addListener(async (cmd) => {
@@ -87,10 +92,17 @@ chrome.commands.onCommand.addListener(async (cmd) => {
   if (tab?.id) sendToTab(tab.id);
 });
 
-// 拡張機能の更新前から開いているタブや chrome:// のページには、翻訳用スクリプトがいないため
-// 送信に失敗する。その場合はエラーにせず無視する(ページを再読み込みすれば使える)。
-function sendToTab(tabId) {
-  chrome.tabs.sendMessage(tabId, { type: "translate-selection" }).catch(() => {});
+// 拡張機能の更新前から開いているタブや PDF ビューアーなど、ページの中に表示できないときは、
+// 右クリックメニューが渡してくれた文章を小さなウィンドウで翻訳する(ショートカットでは文章を受け取れないので何もしない)。
+function sendToTab(tabId, selectionText) {
+  chrome.tabs.sendMessage(tabId, { type: "translate-selection", selectionText })
+    .catch(() => false)
+    .then((handled) => { if (!handled && selectionText) openResultWindow(selectionText); });
+}
+
+async function openResultWindow(text) {
+  await chrome.storage.session.set({ resultText: text.slice(0, MAX_CHARS) });
+  await chrome.windows.create({ url: "result.html", type: "popup", width: 520, height: 340 });
 }
 
 chrome.runtime.onConnect.addListener((port) => {
@@ -124,35 +136,43 @@ function safePost(port, m) {
   try { port.postMessage(m); } catch (_) {}
 }
 
-// ひらがな・カタカナを含めば日本語とみなす。
-// 「機械翻訳」のように漢字だけのときは中国語と区別できないので、ページが日本語なら日本語とみなす。
-function looksJapanese(text, pageLang) {
-  if (/[぀-ヿ]/.test(text)) return true;
-  const hasHan = /\p{Script=Han}/u.test(text);
-  const hasLatin = /\p{Script=Latin}/u.test(text);
-  return hasHan && !hasLatin && /^ja\b/i.test(pageLang || "");
-}
-
 // 入力に特殊トークン(<|plamo:...|> の形)が混ざるとプロンプト構造が壊れるので除去する。
 // plamo: 以外の、<| |> で囲まれた予約トークン風の文字列も念のため除去する。
 function clean(s) {
   return String(s).replace(/<\|[^<>|\s]{1,40}\|>/g, "");
 }
 
-// 翻訳先の言語を決める。翻訳先が日本語で、選んだ文章も日本語なら altLang を使う。
-// altLang が「なし」("")なら、空文字を返す(= 翻訳しない)
-function decideTarget(text, s) {
-  if (s.targetLang === "ja" && looksJapanese(text, s.pageLang)) return s.altLang || "";
-  return s.targetLang;
+// 大文字で始まる語のうち、普段から訳す語(月・曜日)は自動では残さない
+const COMMON_CAPITALIZED = /^(I|January|February|March|April|May|June|July|August|September|October|November|December|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)$/;
+
+// 翻訳せずに残す語を、文章に出てくる綴りのまま集める。モデルの用語集に「元の語 → 元の語」で渡す
+function keepTerms(text, s) {
+  const terms = new Set();
+  for (const line of String(s.keepTerms || "").split("\n")) {
+    const term = clean(line).trim();
+    if (!term) continue;
+    const escaped = term.replace(/[.*+?^${}()|[\]\\/-]/g, "\\$&");
+    const re = new RegExp(`(?<![\\p{Script=Latin}\\p{N}])${escaped}(?![\\p{Script=Latin}\\p{N}])`, "giu");
+    for (const m of text.matchAll(re)) terms.add(m[0]);
+  }
+  // ドイツ語は名詞がすべて大文字で始まるので対象にしない
+  if (s.autoKeepNames && !/^de\b/i.test(s.pageLang || "")) {
+    for (const m of text.matchAll(/\p{Lu}[\p{L}\p{N}'’-]+/gu)) {
+      const before = text.slice(0, m.index).trimEnd();
+      if (before && !/[.!?。!?:;"“(\n]$/.test(before) && !COMMON_CAPITALIZED.test(m[0])) terms.add(m[0]);
+    }
+  }
+  return [...terms].slice(0, 50);
 }
 
-function buildPrompt(text, title, s) {
-  const target = decideTarget(text, s);
+function buildPrompt(text, title, s, target) {
 
   let p = "<|plamo:tag|>dataset<|plamo:msg|>translation";
   if (s.useTitleContext && title) {
     p += "<|plamo:tag|>context<|plamo:msg|>" + clean(title).slice(0, 200);
   }
+  const terms = keepTerms(clean(text), s);
+  if (terms.length) p += "<|plamo:tag|>glossary" + terms.map((t) => `<|plamo:index|>${t}<|plamo:item|>${t}`).join("");
   p += "<|plamo:tag|>input<|plamo:msg|>" + clean(text);
   p += "<|plamo:tag|>output<|plamo:key|>lang<|plamo:val|>" + target;
   if (target === "ja" && s.form) p += "<|plamo:key|>form<|plamo:val|>" + s.form;
@@ -180,27 +200,34 @@ function pickServers(text, s) {
   return [s.shortUrl];
 }
 
+function skipMessage(text, s, pageLang) {
+  if (isNumbersOnly(text)) return "数字だけの選択は翻訳しません。";
+  if (s.targetLang === "ja" && looksJapanese(text, pageLang)) return "日本語の文章は翻訳しない設定です(設定画面の「選択テキストが日本語だったときの翻訳先」で変更できます)。";
+  return "この言語は翻訳しない設定です(設定画面の「翻訳する言語」で変更できます)。";
+}
+
 async function streamTranslate({ text, title, pageLang }, port, signal) {
   const s = await getSettings();
   s.pageLang = pageLang;
-  // 日本語の文章を「翻訳しない」設定なら、サーバーに送らずに知らせる
-  if (!decideTarget(text, s)) { safePost(port, { skip: true }); return; }
+  // 翻訳しない文章なら、サーバーに送らずに理由を知らせる
+  const target = await decideTarget(text, s, pageLang);
+  if (!target) { safePost(port, { skip: true, message: skipMessage(text, s, pageLang) }); return; }
   const [primary, fallback] = pickServers(text, s);
   try {
-    await streamFrom(primary, text, title, s, port, signal);
+    await streamFrom(primary, text, title, s, port, signal, target);
   } catch (e) {
     // 選んだモデルのサーバーが動いていないときは、もう片方で翻訳し、そのことをパネルに表示する
     if (fallback && e instanceof TypeError && !port.__gotText) {
       const label = (url) => (url === s.longUrl ? "2B" : "0.8B");
       safePost(port, { note: `${label(primary)} のサーバーに接続できないため、${label(fallback)} で翻訳しました。` });
-      await streamFrom(fallback, text, title, s, port, signal);
+      await streamFrom(fallback, text, title, s, port, signal, target);
     } else {
       throw e;
     }
   }
 }
 
-async function streamFrom(baseUrl, text, title, s, port, signal) {
+async function streamFrom(baseUrl, text, title, s, port, signal, target) {
   checkUrl(baseUrl);
   const headers = { "Content-Type": "application/json" };
   // API キーが未設定なら、start-server.ps1 で起動したサーバー用の合言葉を送る
@@ -212,7 +239,7 @@ async function streamFrom(baseUrl, text, title, s, port, signal) {
     headers,
     body: JSON.stringify({
       model: s.model,
-      prompt: buildPrompt(text, title, s),
+      prompt: buildPrompt(text, title, s, target),
       stream: true,
       temperature: 0,
       max_tokens: 2048,

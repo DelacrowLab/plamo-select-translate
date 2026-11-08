@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PLaMo クイック翻訳 設定</title>
+<title>クイック翻訳 設定</title>
 <style>
   :root{--fg:#1f2328;--muted:#59636e;--line:#d0d7de;--accent:#1a73e8;--bg:#fff;--code:#f3f5f7;--ok:#1a7f37;--ng:#cf222e}
   @media (prefers-color-scheme:dark){:root{--fg:#e6edf3;--muted:#9198a1;--line:#3d444d;--accent:#4493f8;--bg:#16181c;--code:#22262c;--ok:#3fb950;--ng:#f85149}}
@@ -18,7 +18,7 @@
   code{font:13px Consolas,monospace}
   .copy{position:absolute;top:4px;right:4px;font-size:12px;padding:2px 8px;margin:0}
   label{display:block;margin:14px 0 4px;font-weight:600}
-  input[type=text],input[type=password],select{width:100%;padding:6px 8px;box-sizing:border-box;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+  input[type=text],input[type=password],select,textarea{width:100%;padding:6px 8px;box-sizing:border-box;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
   .check{margin-top:12px}
   .check label{font-weight:400;display:inline;margin:0}
   small{color:var(--muted);display:block}
@@ -26,6 +26,12 @@
   button.sub{background:transparent;color:var(--accent)}
   #msg{margin-left:8px}
   #status{display:block;white-space:pre-line;margin-top:8px}
+  textarea{font:inherit;resize:vertical}
+  .langs{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:6px;padding:6px 10px}
+  .langs label{font-weight:400;margin:0}
+  .langs input:disabled+span{color:var(--muted)}
+  .tools{display:flex;align-items:center;gap:8px;margin:0 0 6px}
+  .tools button{margin:0;padding:2px 12px;font-size:12px}
   .os{display:flex;align-items:center;gap:8px;margin:8px 0}
   .os button{margin:0;padding:2px 14px}
   .os button[aria-pressed=true]{background:var(--accent);color:#fff}
@@ -35,7 +41,7 @@
 </style>
 </head>
 <body>
-<h1><img src="icons/icon48.png" alt="">PLaMo クイック翻訳</h1>
+<h1><img src="icons/icon48.png" alt="">クイック翻訳</h1>
 <p class="lead">ページ上のテキストを選択すると、PC 上で動かす PLaMo 3 Translate がすぐに翻訳します。初期設定では、翻訳する文章は PC の外に送られません(PC 以外のサーバーを設定した場合は、選択した文章とページタイトルがそのサーバーに送られます)。</p>
 
 <h2>はじめに: 翻訳サーバーの準備</h2>
@@ -46,29 +52,24 @@
   <button type="button" class="sub" data-os="mac">Mac</button>
 </div>
 <ol data-steps="win">
-  <li>llama.cpp をインストールします。スタートメニューで「ターミナル」を開き、次を貼り付けて Enter。
-    <pre><code>winget install llama.cpp</code><button class="copy sub">コピー</button></pre></li>
-  <li>「翻訳サーバーのセット」を用意します。zip で拡張機能を受け取った人は、同じフォルダに入っているので、この手順は不要です。Chrome ウェブストアから入れた人は、<a href="https://github.com/DelacrowLab/plamo-select-translate/releases/latest" target="_blank" rel="noopener">ダウンロードのページ(GitHub)</a>の一覧から、<code>plamo-translate-server-</code> で始まる zip を選びます(<code>plamo-translate-ext-</code> で始まる zip は選びません)。ダウンロードしたら展開します。</li>
+  <li>「翻訳サーバーのセット」を用意します。<a href="https://github.com/DelacrowLab/plamo-select-translate/releases/latest" target="_blank" rel="noopener">ダウンロードのページ(GitHub)</a>の一覧から、<code>plamo-translate-server-</code> で始まる zip を選びます(<code>plamo-translate-ext-</code> で始まる zip は選びません)。ダウンロードしたら展開します。zip で拡張機能を受け取った人は、同じフォルダに入っているので、この手順は不要です。</li>
   <li>セットの中の <code>自動起動を設定する.bat</code> をダブルクリックし、「1. 0.8B のみ」か「2. 0.8B と 2B」を選びます。<br>
-    以後はPC にサインインするたびに、翻訳サーバーが裏で自動的に起動します(今回もすぐ起動します)。
+    以後はPC にサインインするたびに、翻訳サーバーが裏で自動的に起動します(今回もすぐ起動します)。翻訳エンジン(llama.cpp)が入っていないときは、自動でインストールします。
     <small>迷ったら 1 で十分です。自動起動しない場合は、使うたびに <code>start-server.bat</code> をダブルクリックして起動します。</small></li>
-  <li>すぐ下の「接続テスト」を押します。「成功」と出れば準備完了です。初回はモデルのダウンロードに数分かかるので、失敗したら少し待ってからもう一度押してください。</li>
+  <li>すぐ下の「接続テスト」を押します。「成功」と出れば準備完了です。初回はダウンロードに数分かかるので、失敗したら少し待ってからもう一度押してください。</li>
 </ol>
 <ol data-steps="mac" hidden>
-  <li>llama.cpp をインストールします。Finder →「アプリケーション」→「ユーティリティ」→「ターミナル」を開き、次を貼り付けて Enter。
-    <pre><code>brew install llama.cpp</code><button class="copy sub">コピー</button></pre>
-    <small>「command not found: brew」と出たら、<a href="https://brew.sh" target="_blank" rel="noopener">brew.sh</a> の手順で Homebrew を入れてから、もう一度実行します。</small></li>
-  <li>「翻訳サーバーのセット」を用意します。zip で拡張機能を受け取った人は、同じフォルダに入っているので、この手順は不要です。Chrome ウェブストアから入れた人は、<a href="https://github.com/DelacrowLab/plamo-select-translate/releases/latest" target="_blank" rel="noopener">ダウンロードのページ(GitHub)</a>の一覧から、<code>plamo-translate-server-</code> で始まる zip を選びます(<code>plamo-translate-ext-</code> で始まる zip は選びません)。ダウンロードしたら展開します。</li>
+  <li>「翻訳サーバーのセット」を用意します。<a href="https://github.com/DelacrowLab/plamo-select-translate/releases/latest" target="_blank" rel="noopener">ダウンロードのページ(GitHub)</a>の一覧から、<code>plamo-translate-server-</code> で始まる zip を選びます(<code>plamo-translate-ext-</code> で始まる zip は選びません)。ダウンロードしたら展開します。zip で拡張機能を受け取った人は、同じフォルダに入っているので、この手順は不要です。</li>
   <li>セットの中の <code>自動起動を設定する.command</code> をダブルクリックし、「1. 0.8B のみ」か「2. 0.8B と 2B」を選びます。<br>
-    以後はMac にログインするたびに、翻訳サーバーが裏で自動的に起動します(今回もすぐ起動します)。
+    以後はMac にログインするたびに、翻訳サーバーが裏で自動的に起動します(今回もすぐ起動します)。翻訳エンジン(llama.cpp)が入っていないときは、自動でインストールします。
     <small>迷ったら 1 で十分です。自動起動しない場合は、使うたびに <code>翻訳サーバーを起動する.command</code> をダブルクリックして起動します。</small>
     <small>開けないと表示されたときは、「システム設定」→「プライバシーとセキュリティ」の「このまま開く」を押します(詳しくは「はじめにお読みください(Mac).txt」)。</small></li>
-  <li>すぐ下の「接続テスト」を押します。「成功」と出れば準備完了です。初回はモデルのダウンロードに数分かかるので、失敗したら少し待ってからもう一度押してください。</li>
+  <li>すぐ下の「接続テスト」を押します。「成功」と出れば準備完了です。初回はダウンロードに数分かかるので、失敗したら少し待ってからもう一度押してください。</li>
 </ol>
 <div>
   <button id="test" class="sub">接続テスト</button><span id="status"></span>
 </div>
-<small>「成功」と出たら、新しいタブで Web ページを開くか、開いていたページを再読み込みしてから、英語などの文章を選択してください(Chrome ウェブストア、chrome:// で始まるページ、PDF では使えません)。</small>
+<small>「成功」と出たら、新しいタブで Web ページを開くか、開いていたページを再読み込みしてから、英語の文章を選択してください。PDF は、文章を選んでから右クリック →「クイック翻訳で翻訳」で翻訳します(Chrome ウェブストアと chrome:// で始まるページでは使えません)。</small>
 <details>
   <summary><small>Linux や、ターミナルから自分で起動する場合</small></summary>
   <small>llama.cpp を入れてから、次のコマンドで 0.8B を起動します。2B も使う場合は、別のターミナルで <code>0.8b</code> を <code>2b</code> に、<code>8080</code> を <code>8081</code> に変えたコマンドも起動します。</small>
@@ -117,6 +118,15 @@
 </details>
 
 <h2>翻訳設定</h2>
+<label>翻訳する言語</label>
+<div class="tools">
+  <button type="button" id="sourceAll" class="sub">すべて選択</button>
+  <button type="button" id="sourceNone" class="sub">すべて解除</button>
+  <small id="sourceSummary"></small>
+</div>
+<div id="sourceLangs" class="langs"></div>
+<small>チェックを入れた言語の文章だけを翻訳します。初期設定は英語だけです。短い語句で言語を判定できないときは、同じ文字を使う言語にチェックがあれば翻訳します。</small>
+
 <label for="targetLang">翻訳先の言語</label>
 <select id="targetLang"></select>
 
@@ -131,9 +141,15 @@
   <option value="plain">だ・である調</option>
 </select>
 
+<label for="keepTerms">翻訳せずそのまま残す語(1 行に 1 語)</label>
+<textarea id="keepTerms" rows="4" maxlength="2000" placeholder="Euler&#10;tetrodotoxin"></textarea>
+<small>人名、企業名、一般的でない化学物質名など。大文字・小文字は区別しません。多くの場合はそのまま残りますが、必ず残るとは限りません。</small>
+<div class="check"><input id="autoKeepNames" type="checkbox"> <label for="autoKeepNames">文の途中で大文字から始まる語も自動で残す</label>
+<small>人名や企業名を自動で残します。Paris のように普段はカタカナで訳す語も原語のまま残り、文頭の語は対象外です。</small></div>
+
 <div class="check"><input id="useTitleContext" type="checkbox"> <label for="useTitleContext">ページタイトルを文脈として渡す(訳語の精度が上がります)</label></div>
 <div class="check"><input id="autoTranslate" type="checkbox"> <label for="autoTranslate">テキスト選択時に自動で翻訳する</label>
-<small>オフの場合は、右クリックメニューの「PLaMo で翻訳」か Alt+T(Mac は option+T)で翻訳します。</small></div>
+<small>オフの場合は、右クリックメニューの「クイック翻訳で翻訳」か Alt+T(Mac は option+T)で翻訳します。</small></div>
 
 <div>
   <button id="save">保存</button><span id="msg"></span>
@@ -144,6 +160,7 @@
   翻訳モデル: <a href="https://huggingface.co/pfnet/plamo-3-translate-0.8b" target="_blank" rel="noopener">PLaMo 3 Translate</a>(Preferred Networks, Inc.)。モデルは PLaMo Community License のもとで提供されています。<br>
   この拡張機能は Preferred Networks, Inc. の公式製品ではありません。
 </footer>
+<script src="shared.js"></script>
 <script src="options.js"></script>
 </body>
 </html>

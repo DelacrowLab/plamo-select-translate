@@ -1,4 +1,4 @@
-﻿# PLaMo クイック翻訳 - 翻訳サーバーの起動・自動起動の設定
+﻿# クイック翻訳 - 翻訳サーバーの起動・自動起動の設定
 #
 #   start-server.bat            … メニューを出して、このウィンドウでサーバーを起動(閉じると停止)
 #   自動起動を設定する.bat      … PC にサインインしたとき、裏で自動的にサーバーを起動するよう登録
@@ -33,9 +33,9 @@ $IdleSec2 = 600                        # 2B: メモリを多く使うので 10 �
 $AppDir   = Join-Path $env:LOCALAPPDATA "PLaMoSelectTranslate"
 $AppScript = Join-Path $AppDir "start-server.ps1"   # 自動起動で実行するコピー
 $NoCorsOrigin = "https://plamo-select-translate.invalid"   # 実在しないオリジン(= どのページにも許可しない)
-$Shortcut = if ($ShortcutPath) { $ShortcutPath } else { Join-Path ([Environment]::GetFolderPath("Startup")) "PLaMo クイック翻訳サーバー.lnk" }
-# 以前の名前(1.2.x まで「PLaMo 選択翻訳」)で登録された自動起動のショートカット。登録し直すときや解除するときに一緒に消す
-$OldShortcuts = if ($ShortcutPath) { @() } else { @(Join-Path ([Environment]::GetFolderPath("Startup")) "PLaMo 選択翻訳サーバー.lnk") }
+$Shortcut = if ($ShortcutPath) { $ShortcutPath } else { Join-Path ([Environment]::GetFolderPath("Startup")) "クイック翻訳サーバー.lnk" }
+# 以前の名前(1.2.x まで「PLaMo 選択翻訳」、1.3.0 の開発中の「PLaMo クイック翻訳」)で登録された自動起動のショートカット。登録し直すときや解除するときに一緒に消す
+$OldShortcuts = if ($ShortcutPath) { @() } else { @("PLaMo 選択翻訳サーバー.lnk", "PLaMo クイック翻訳サーバー.lnk") | ForEach-Object { Join-Path ([Environment]::GetFolderPath("Startup")) $_ } }
 $repo08   = "pfnet/plamo-3-translate-0.8b-GGUF:Q4_K_M"
 $repo2    = "pfnet/plamo-3-translate-2b-GGUF:Q4_K_M"
 
@@ -134,12 +134,20 @@ if ($Uninstall) {
   Pause-Exit 0
 }
 
-$Host.UI.RawUI.WindowTitle = "PLaMo クイック翻訳 - 翻訳サーバー"
+$Host.UI.RawUI.WindowTitle = "クイック翻訳 - 翻訳サーバー"
 $exe = Find-LlamaServer (-not $Background)
+if (-not $exe -and -not $DryRun -and -not $Background -and (Get-Command winget -ErrorAction SilentlyContinue)) {
+  Write-Host ""
+  Write-Host " 翻訳エンジン(llama.cpp)をインストールします。少し時間がかかります。"
+  Write-Host ""
+  & winget install --id ggml.llamacpp -e --accept-package-agreements --accept-source-agreements
+  $exe = Find-LlamaServer $true
+}
 if (-not $exe -and -not $DryRun) {
   if ($Background) { Write-Log "llama-server が見つからないため起動できませんでした(winget install llama.cpp が必要です)"; exit 1 }
-  Write-Host "llama-server が見つかりません。" -ForegroundColor Red
-  Write-Host "ターミナルで「winget install llama.cpp」を実行してから、もう一度開いてください。"
+  Write-Host "翻訳エンジン(llama.cpp)をインストールできませんでした。" -ForegroundColor Red
+  Write-Host "インターネットにつながっているか確かめて、もう一度開いてください。"
+  Write-Host "直らないときは、ターミナルで「winget install llama.cpp」を実行してから、もう一度開いてください。"
   Pause-Exit 1
 }
 
@@ -170,7 +178,7 @@ if ($Install) {
   # -ExecutionPolicy Bypass: 既定の実行ポリシーでは .ps1 を実行できない PC が多いため、このスクリプトに限って許可する
   $lnk.Arguments = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$AppScript`" -Background -Choice $Choice"
   $lnk.WindowStyle = 7   # 最小化で起動(画面に出さない)
-  $lnk.Description = "PLaMo クイック翻訳の翻訳サーバーを裏で起動します"
+  $lnk.Description = "クイック翻訳の翻訳サーバーを裏で起動します"
   $lnk.Save()
   Stop-OurServers | Out-Null   # 以前の設定で動いているサーバーがあれば止めて、選んだ設定で起動し直す
   Start-Sleep -Milliseconds 500

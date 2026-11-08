@@ -1,5 +1,5 @@
 #!/bin/bash
-# PLaMo クイック翻訳 - 翻訳サーバーの起動・自動起動の設定(Mac 用。Windows 版 start-server.ps1 と同じ設定)
+# クイック翻訳 - 翻訳サーバーの起動・自動起動の設定(Mac 用。Windows 版 start-server.ps1 と同じ設定)
 #
 #   翻訳サーバーを起動する.command  … メニューを出して、このウィンドウでサーバーを起動(閉じると停止)
 #   自動起動を設定する.command      … Mac にログインしたとき、裏で自動的にサーバーを起動するよう登録
@@ -32,6 +32,9 @@ AGENT_DIR="$HOME/Library/LaunchAgents"
 LABEL_PREFIX="io.github.delacrowlab.plamo-quick-translate"
 REPO08="pfnet/plamo-3-translate-0.8b-GGUF:Q4_K_M"
 REPO2="pfnet/plamo-3-translate-2b-GGUF:Q4_K_M"
+# Homebrew がない Mac では、llama.cpp の公式ビルドをこの版に固定してダウンロードする(改ざんの確認のためハッシュも固定)
+LLAMA_TAG="b12110"
+LOCAL_LLAMA_DIR="$APP_DIR/llama.cpp"
 
 CHOICE=""; INSTALL=0; UNINSTALL=0; DRYRUN=0
 while [ $# -gt 0 ]; do
@@ -52,10 +55,37 @@ pause_exit() {
 
 # Homebrew で入れた llama-server を優先して探す(Finder から開いたときは PATH に Homebrew が入っていないため)
 find_llama_server() {
-  for p in /opt/homebrew/bin/llama-server /usr/local/bin/llama-server; do
+  for p in /opt/homebrew/bin/llama-server /usr/local/bin/llama-server "$LOCAL_LLAMA_DIR/llama-server"; do
     if [ -x "$p" ]; then echo "$p"; return; fi
   done
   command -v llama-server 2>/dev/null
+}
+
+# llama.cpp を $LOCAL_LLAMA_DIR に入れる。curl でのダウンロードは Mac の検疫の対象にならない
+install_llama_cpp() {
+  local asset sha tmp
+  case "$(uname -m)" in
+    arm64)  asset="llama-$LLAMA_TAG-bin-macos-arm64.tar.gz"; sha="4f5b8de12e0b9516658ca6a5764c6ffb3d7c659c3dd538556b1413c7b4050662" ;;
+    x86_64) asset="llama-$LLAMA_TAG-bin-macos-x64.tar.gz";   sha="c8094268b6bf62f4998f0e45656fd9f5e2d4afb6b1cd0044d761db64be1dd47d" ;;
+    *) return 1 ;;
+  esac
+  tmp="$(mktemp -d)" || return 1
+  echo ""
+  echo " 翻訳エンジン(llama.cpp)をダウンロードします。"
+  if curl -fL --progress-bar -o "$tmp/llama.tar.gz" "https://github.com/ggml-org/llama.cpp/releases/download/$LLAMA_TAG/$asset" \
+     && [ "$(shasum -a 256 "$tmp/llama.tar.gz" | cut -d' ' -f1)" = "$sha" ] \
+     && tar -xzf "$tmp/llama.tar.gz" -C "$tmp"; then
+    local server; server="$(find "$tmp" -type f -name llama-server | head -1)"
+    if [ -n "$server" ]; then
+      rm -rf "$LOCAL_LLAMA_DIR"
+      mkdir -p "$APP_DIR"
+      mv "$(dirname "$server")" "$LOCAL_LLAMA_DIR"
+      rm -rf "$tmp"
+      return 0
+    fi
+  fi
+  rm -rf "$tmp"
+  return 1
 }
 
 # 0.8B は常にポート 8080、2B は常にポート 8081 で動かす。どのモデルで翻訳するかは拡張機能の設定画面で選ぶ。
@@ -126,8 +156,11 @@ fi
 
 EXE="$(find_llama_server)"
 if [ -z "$EXE" ] && [ "$DRYRUN" = 0 ]; then
-  echo "llama-server が見つかりません。"
-  echo "ターミナルで「brew install llama.cpp」を実行してから、もう一度開いてください。"
+  if install_llama_cpp; then EXE="$(find_llama_server)"; fi
+fi
+if [ -z "$EXE" ] && [ "$DRYRUN" = 0 ]; then
+  echo "翻訳エンジン(llama.cpp)をインストールできませんでした。"
+  echo "インターネットにつながっているか確かめて、もう一度開いてください。"
   pause_exit 1
 fi
 
