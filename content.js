@@ -5,10 +5,21 @@
   let host = null;
   let box = null;
   let closeBtn = null;
+  let textEl = null;
+  let copyBtn = null;
+  let translation = ""; // コピーする訳文(パネルに添える注記は含めない)
+  let copyTimer = 0;
   let port = null;
   let lastText = "";
   const RELOAD_MSG = "拡張機能が更新されました。このページを再読み込みしてから、もう一度お試しください。";
   const PDF_HINT = "PDF では、文章を選んでから右クリック →「クイック翻訳で翻訳」を選んでください。";
+
+  // 一時停止はタブで開いているサイトの単位なので、埋め込みのフレームでは一番外側のサイトで判断する
+  function currentSite() {
+    const origins = location.ancestorOrigins;
+    if (!origins?.length) return location.hostname;
+    try { return new URL(origins[origins.length - 1]).hostname; } catch (_) { return location.hostname; }
+  }
 
   function ensureUI() {
     if (host) return;
@@ -24,16 +35,29 @@
           white-space:pre-wrap;word-break:break-word}
         .err{color:#cf222e}
         .hint{color:#59636e}
-        .busy::after{content:"▍";animation:b 1s steps(2) infinite}
+        .busy .text::after{content:"▍";animation:b 1s steps(2) infinite}
         @keyframes b{50%{opacity:0}}
+        .copy{display:block;margin:8px 0 0 auto;padding:2px 10px;border:1px solid #1a73e8;border-radius:6px;background:none;color:#1a73e8;font:12px/1.5 system-ui;cursor:pointer}
+        .copy[hidden]{display:none}
+        @media (prefers-color-scheme:dark){.copy{color:#4493f8;border-color:#4493f8}}
         .close{position:fixed;top:20px;right:24px;border:0;background:none;font:18px/1 system-ui;cursor:pointer;color:#59636e}
         @media (prefers-color-scheme:dark){.box{background:#1f2328;color:#e6edf3;border-color:#4493f8}}
       </style>
-      <div class="box" hidden></div>
+      <div class="box" hidden><div class="text"></div><button class="copy" hidden>コピー</button></div>
       <button class="close" hidden aria-label="閉じる">×</button>`;
     box = root.querySelector(".box");
     closeBtn = root.querySelector(".close");
     closeBtn.addEventListener("click", hide);
+    textEl = root.querySelector(".text");
+    copyBtn = root.querySelector(".copy");
+    copyBtn.addEventListener("click", async () => {
+      // http のページなどでは Clipboard API が使えず、失敗する。document.execCommand はページに訳文を書き換えられるので使わない
+      let ok = true;
+      try { await navigator.clipboard.writeText(translation); } catch (_) { ok = false; }
+      copyBtn.textContent = ok ? "コピーしました" : "コピーできませんでした";
+      clearTimeout(copyTimer);
+      copyTimer = setTimeout(() => { copyBtn.textContent = "コピー"; }, 1500);
+    });
     document.documentElement.appendChild(host);
   }
 
@@ -47,7 +71,7 @@
   function showMessage(msg) {
     ensureUI();
     box.className = "box err";
-    box.textContent = msg;
+    textEl.textContent = msg;
     box.hidden = false;
   }
 
@@ -66,6 +90,7 @@
     closePort();
     if (box) box.hidden = true;
     if (closeBtn) closeBtn.hidden = true;
+    if (copyBtn) copyBtn.hidden = true;
   }
 
   // 選択中のテキストと、その位置を返す。入力欄(textarea / テキスト系の input)の中の選択にも対応する。
@@ -102,7 +127,7 @@
     ensureUI();
     hide();
     box.className = "box busy";
-    box.textContent = "";
+    textEl.textContent = "";
     box.hidden = false;
 
     if (!rect) {
@@ -124,33 +149,38 @@
       return showMessage(RELOAD_MSG);
     }
     const myPort = port;
+    // コピーボタンは設定でオンにしたときだけ出す(翻訳が終わるより先に読み終わる)
+    let showCopy = false;
+    chrome.storage.sync.get("showCopyButton").then((v) => { showCopy = v.showCopyButton === true; }).catch(() => {});
     // しばらく使っていなかったときは、サーバーがモデルを読み込み直すため数秒かかる。待っていることを知らせる
     let gotAny = false;
     let note = "";
     const hintTimer = setTimeout(() => {
-      if (myPort === port && !gotAny) { box.className = "box busy hint"; box.textContent = "準備中…(しばらく使っていなかったときは数秒かかります)"; }
+      if (myPort === port && !gotAny) { box.className = "box busy hint"; textEl.textContent = "準備中…(しばらく使っていなかったときは数秒かかります)"; }
     }, 1500);
     myPort.onMessage.addListener((m) => {
       if (myPort !== port) return; // 新しい翻訳が始まっていたら、古い結果は無視
       if (!gotAny && (m.delta || m.error || m.done)) {
         gotAny = true;
         clearTimeout(hintTimer);
-        if (box.classList.contains("hint")) { box.className = "box busy"; box.textContent = ""; }
+        if (box.classList.contains("hint")) { box.className = "box busy"; textEl.textContent = ""; }
       }
       if (m.skip) {
         // 日本語の文章を「翻訳しない」設定のとき。右クリックや Alt+T で頼まれた場合だけ理由を表示する
         clearTimeout(hintTimer);
         closePort();
-        if (explicit) { box.className = "box hint"; box.textContent = m.message; }
+        if (explicit) { box.className = "box hint"; textEl.textContent = m.message; }
         else box.hidden = true;
         return;
       }
       if (m.note) { note = m.note; return; } // 予備のモデルで翻訳したときの知らせ(訳文の後ろに表示)
-      if (m.delta) box.textContent += m.delta;
-      if (m.error) { box.className = "box err"; box.textContent = m.error; }
+      if (m.delta) textEl.textContent += m.delta;
+      if (m.error) { box.className = "box err"; textEl.textContent = m.error; }
       if (m.done) {
         box.className = "box";
-        if (note) box.textContent += "\n\n(" + note + ")";
+        translation = textEl.textContent;
+        copyBtn.hidden = !translation || !showCopy;
+        if (note) textEl.textContent += "\n\n(" + note + ")";
       }
       // 翻訳が終わったら通信路はもう不要なので閉じる(開いたままだとページ移動時に警告が出る)
       if (m.done || m.error) closePort();
@@ -179,11 +209,12 @@
       if (!alive()) return;
       let s;
       try {
-        s = await chrome.storage.sync.get(["autoTranslate", "targetLang", "altLang", "skipLangs"]);
+        s = await chrome.storage.sync.get(["autoTranslate", "targetLang", "altLang", "skipLangs", "pausedSites"]);
       } catch (_) {
         return;
       }
       if (s.autoTranslate === false) return;
+      if (s.pausedSites?.includes(currentSite())) return; // このサイトで一時停止中
       // 翻訳しない文章なら、パネルを出さずに何もしない
       const settings = { targetLang: s.targetLang || "ja", altLang: s.altLang ?? "", skipLangs: s.skipLangs };
       if (!(await decideTarget(picked.text, settings, document.documentElement.lang)).target) return;
@@ -202,6 +233,7 @@
 
   // このページで受け持てたら true を返す(返さないと、右クリックのときは別ウィンドウで翻訳する)
   chrome.runtime.onMessage.addListener((m, _sender, respond) => {
+    if (m.type === "get-site") return respond(currentSite());
     if (m.type !== "translate-selection") return;
     const isPdf = document.contentType === "application/pdf";
     // ショートカットはタブ全体に届くので、操作中のフレームだけが受け持つ(ほかのフレームに残った選択を訳さない)
@@ -220,7 +252,7 @@
       ensureUI();
       hide();
       box.className = "box hint";
-      box.textContent = PDF_HINT;
+      textEl.textContent = PDF_HINT;
       box.hidden = false;
       placeForPdf();
     } else {

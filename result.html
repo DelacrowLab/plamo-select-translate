@@ -4,15 +4,18 @@
 <meta charset="utf-8">
 <title>クイック翻訳</title>
 <style>
-  :root{--fg:#1f2328;--muted:#59636e;--bg:#fff;--ng:#cf222e}
-  @media (prefers-color-scheme:dark){:root{--fg:#e6edf3;--muted:#9198a1;--bg:#16181c;--ng:#f85149}}
+  :root{--fg:#1f2328;--muted:#59636e;--bg:#fff;--ng:#cf222e;--accent:#1a73e8}
+  @media (prefers-color-scheme:dark){:root{--fg:#e6edf3;--muted:#9198a1;--bg:#16181c;--ng:#f85149;--accent:#4493f8}}
   body{font:15px/1.7 system-ui,"Yu Gothic UI","Yu Gothic",sans-serif;margin:16px;color:var(--fg);background:var(--bg)}
   #out{white-space:pre-wrap;word-break:break-word}
+  #copy{display:block;margin:12px 0 0 auto;padding:2px 12px;border:1px solid var(--accent);border-radius:6px;background:none;color:var(--accent);font:13px/1.5 system-ui;cursor:pointer}
+  #copy[hidden]{display:none}
   .hint{color:var(--muted)} .err{color:var(--ng)}
 </style>
 </head>
 <body>
 <div id="out" class="hint">翻訳しています…</div>
+<button id="copy" hidden>コピー</button>
 <script src="result.js"></script>
 </body>
 </html>

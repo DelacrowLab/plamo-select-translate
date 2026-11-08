@@ -1,5 +1,18 @@
 // ページの中に翻訳を表示できないとき(Chrome の PDF ビューアーなど)に開く小さなウィンドウ
 const out = document.getElementById("out");
+const copy = document.getElementById("copy");
+let translation = ""; // コピーする訳文(注記は含めない)
+let copyTimer = 0;
+let showCopy = false; // 設定でオンにしたときだけボタンを出す
+chrome.storage.sync.get("showCopyButton").then((v) => { showCopy = v.showCopyButton === true; }).catch(() => {});
+
+copy.addEventListener("click", async () => {
+  let ok = true;
+  try { await navigator.clipboard.writeText(translation); } catch (_) { ok = false; }
+  copy.textContent = ok ? "コピーしました" : "コピーできませんでした";
+  clearTimeout(copyTimer);
+  copyTimer = setTimeout(() => { copy.textContent = "コピー"; }, 1500);
+});
 
 function show(text, cls) {
   out.className = cls || "";
@@ -20,7 +33,11 @@ chrome.runtime.sendMessage({ type: "take-result", id }).then((resultText) => {
       out.textContent += m.delta;
     }
     if (m.error) show(m.error, "err");
-    if (m.done && note) out.textContent += "\n\n(" + note + ")";
+    if (m.done) {
+      translation = out.textContent;
+      copy.hidden = !translation || !showCopy;
+      if (note) out.textContent += "\n\n(" + note + ")";
+    }
   });
   port.postMessage({ text: resultText, title: "", pageLang: "" });
 }).catch(() => {

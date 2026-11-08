@@ -80,8 +80,6 @@ chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === "install") chrome.runtime.openOptionsPage();
 });
 
-chrome.action.onClicked.addListener(() => chrome.runtime.openOptionsPage());
-
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "plamo-translate" && tab?.id) sendToTab(tab.id, info.selectionText, info.frameId);
 });

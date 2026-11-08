@@ -10,6 +10,7 @@ const DEFAULTS = {
   skipLangs: [], // 翻訳しない言語(初期設定は、なし = 何でも翻訳する)
   keepTerms: "",
   autoKeepNames: false,
+  showCopyButton: false,
   form: "",
   useTitleContext: true,
   autoTranslate: true
@@ -17,7 +18,7 @@ const DEFAULTS = {
 const TEXT_KEYS = ["modelMode", "shortUrl", "longUrl", "model", "targetLang", "altLang", "form", "keepTerms"];
 // start-server.ps1 がサーバーに設定する合言葉(background.js と同じ値)
 const LOCAL_SERVER_KEY = "plamo-select-translate";
-const BOOL_KEYS = ["useTitleContext", "autoTranslate", "autoKeepNames"];
+const BOOL_KEYS = ["useTitleContext", "autoTranslate", "autoKeepNames", "showCopyButton"];
 const $ = (id) => document.getElementById(id);
 
 $("altLang").add(new Option("なし(翻訳しない)", ""));
