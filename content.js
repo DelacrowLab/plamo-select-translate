@@ -129,6 +129,10 @@
     box.className = "box busy";
     textEl.textContent = "";
     box.hidden = false;
+    // 前の翻訳のコピー状態を持ち越さない
+    translation = "";
+    clearTimeout(copyTimer);
+    copyBtn.textContent = "コピー";
 
     if (!rect) {
       placeForPdf();
@@ -149,9 +153,12 @@
       return showMessage(RELOAD_MSG);
     }
     const myPort = port;
-    // コピーボタンは設定でオンにしたときだけ出す(翻訳が終わるより先に読み終わる)
+    // コピーボタンは設定でオンにしたときだけ出す。設定の読み込みが翻訳の完了より遅れたときは、読み込めた時点で出す
     let showCopy = false;
-    chrome.storage.sync.get("showCopyButton").then((v) => { showCopy = v.showCopyButton === true; }).catch(() => {});
+    chrome.storage.sync.get("showCopyButton").then((v) => {
+      showCopy = v.showCopyButton === true;
+      if (translation) copyBtn.hidden = !showCopy;
+    }).catch(() => {});
     // しばらく使っていなかったときは、サーバーがモデルを読み込み直すため数秒かかる。待っていることを知らせる
     let gotAny = false;
     let note = "";

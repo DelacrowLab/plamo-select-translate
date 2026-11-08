@@ -4,7 +4,10 @@ const copy = document.getElementById("copy");
 let translation = ""; // コピーする訳文(注記は含めない)
 let copyTimer = 0;
 let showCopy = false; // 設定でオンにしたときだけボタンを出す
-chrome.storage.sync.get("showCopyButton").then((v) => { showCopy = v.showCopyButton === true; }).catch(() => {});
+chrome.storage.sync.get("showCopyButton").then((v) => {
+  showCopy = v.showCopyButton === true;
+  if (translation) copy.hidden = !showCopy; // 設定の読み込みが翻訳の完了より遅れたとき
+}).catch(() => {});
 
 copy.addEventListener("click", async () => {
   let ok = true;
