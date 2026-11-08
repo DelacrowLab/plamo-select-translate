@@ -26,6 +26,9 @@
   button.sub{background:transparent;color:var(--accent)}
   #msg{margin-left:8px}
   #status{display:block;white-space:pre-line;margin-top:8px}
+  .os{display:flex;align-items:center;gap:8px;margin:8px 0}
+  .os button{margin:0;padding:2px 14px}
+  .os button[aria-pressed=true]{background:var(--accent);color:#fff}
   .ok{color:var(--ok)} .ng{color:var(--ng)}
   footer{margin:40px 0 16px;color:var(--muted);font-size:12px}
   a{color:var(--accent)}
@@ -35,29 +38,50 @@
 <h1><img src="icons/icon48.png" alt="">PLaMo クイック翻訳</h1>
 <p class="lead">ページ上のテキストを選択すると、PC 上で動かす PLaMo 3 Translate がすぐに翻訳します。初期設定では、翻訳する文章は PC の外に送られません(PC 以外のサーバーを設定した場合は、選択した文章とページタイトルがそのサーバーに送られます)。</p>
 
-<h2>はじめに: 翻訳サーバーの準備(Windows)</h2>
-<ol>
-  <li>llama.cpp をインストールします(初回のみ)。スタートメニューで「ターミナル」を開き、次を貼り付けて Enter。
+<h2>はじめに: 翻訳サーバーの準備</h2>
+<p>翻訳するには、最初の 1 回だけ次の準備が必要です(すでに翻訳できている場合は読み飛ばしてください)。</p>
+<div class="os" role="group" aria-label="お使いのパソコン">
+  お使いのパソコン:
+  <button type="button" class="sub" data-os="win">Windows</button>
+  <button type="button" class="sub" data-os="mac">Mac</button>
+</div>
+<ol data-steps="win">
+  <li>llama.cpp をインストールします。スタートメニューで「ターミナル」を開き、次を貼り付けて Enter。
     <pre><code>winget install llama.cpp</code><button class="copy sub">コピー</button></pre></li>
-  <li>「翻訳サーバーのセット」をダウンロードして展開します(zip で拡張機能を受け取った人は、同じフォルダに入っています)。
-    <br><a href="https://github.com/DelacrowLab/plamo-select-translate/releases/latest" target="_blank" rel="noopener">翻訳サーバーのセットをダウンロード(GitHub)</a></li>
+  <li>「翻訳サーバーのセット」を用意します。zip で拡張機能を受け取った人は、同じフォルダに入っているので、この手順は不要です。Chrome ウェブストアから入れた人は、<a href="https://github.com/DelacrowLab/plamo-select-translate/releases/latest" target="_blank" rel="noopener">ダウンロードのページ(GitHub)</a>の一覧から、<code>plamo-translate-server-</code> で始まる zip を選びます(<code>plamo-translate-ext-</code> で始まる zip は選びません)。ダウンロードしたら展開します。</li>
   <li>セットの中の <code>自動起動を設定する.bat</code> をダブルクリックし、「1. 0.8B のみ」か「2. 0.8B と 2B」を選びます。<br>
-    以後は PC にサインインするたびに、翻訳サーバーが裏で自動的に起動します。しばらく使わないとモデルをメモリから下ろし、次の翻訳で自動的に戻ります(戻るときだけ数秒かかります)。
-    <small>「0.8B と 2B」を選んでおけば、下の「使うモデル」でいつでも切り替えられます。自動起動しない場合は、使うたびに <code>start-server.bat</code> をダブルクリックして起動します。</small></li>
-  <li>下の「接続テスト」を押して、翻訳結果が表示されれば準備完了です。初回はモデルのダウンロードに数分かかります。</li>
+    以後はPC にサインインするたびに、翻訳サーバーが裏で自動的に起動します(今回もすぐ起動します)。
+    <small>迷ったら 1 で十分です。自動起動しない場合は、使うたびに <code>start-server.bat</code> をダブルクリックして起動します。</small></li>
+  <li>すぐ下の「接続テスト」を押します。「成功」と出れば準備完了です。初回はモデルのダウンロードに数分かかるので、失敗したら少し待ってからもう一度押してください。</li>
 </ol>
+<ol data-steps="mac" hidden>
+  <li>llama.cpp をインストールします。Finder →「アプリケーション」→「ユーティリティ」→「ターミナル」を開き、次を貼り付けて Enter。
+    <pre><code>brew install llama.cpp</code><button class="copy sub">コピー</button></pre>
+    <small>「command not found: brew」と出たら、<a href="https://brew.sh" target="_blank" rel="noopener">brew.sh</a> の手順で Homebrew を入れてから、もう一度実行します。</small></li>
+  <li>「翻訳サーバーのセット」を用意します。zip で拡張機能を受け取った人は、同じフォルダに入っているので、この手順は不要です。Chrome ウェブストアから入れた人は、<a href="https://github.com/DelacrowLab/plamo-select-translate/releases/latest" target="_blank" rel="noopener">ダウンロードのページ(GitHub)</a>の一覧から、<code>plamo-translate-server-</code> で始まる zip を選びます(<code>plamo-translate-ext-</code> で始まる zip は選びません)。ダウンロードしたら展開します。</li>
+  <li>セットの中の <code>自動起動を設定する.command</code> をダブルクリックし、「1. 0.8B のみ」か「2. 0.8B と 2B」を選びます。<br>
+    以後はMac にログインするたびに、翻訳サーバーが裏で自動的に起動します(今回もすぐ起動します)。
+    <small>迷ったら 1 で十分です。自動起動しない場合は、使うたびに <code>翻訳サーバーを起動する.command</code> をダブルクリックして起動します。</small>
+    <small>開けないと表示されたときは、「システム設定」→「プライバシーとセキュリティ」の「このまま開く」を押します(詳しくは「はじめにお読みください(Mac).txt」)。</small></li>
+  <li>すぐ下の「接続テスト」を押します。「成功」と出れば準備完了です。初回はモデルのダウンロードに数分かかるので、失敗したら少し待ってからもう一度押してください。</li>
+</ol>
+<div>
+  <button id="test" class="sub">接続テスト</button><span id="status"></span>
+</div>
+<small>「成功」と出たら、新しいタブで Web ページを開くか、開いていたページを再読み込みしてから、英語などの文章を選択してください(Chrome ウェブストア、chrome:// で始まるページ、PDF では使えません)。</small>
 <details>
-  <summary><small>Mac / Linux や、ターミナルから自分で起動する場合</small></summary>
-  <small><b>Mac:</b> <code>brew install llama.cpp</code> で入れてから、翻訳サーバーのセットの <code>自動起動を設定する.command</code> をダブルクリックします(詳しくは「はじめにお読みください(Mac).txt」)。</small><br>
+  <summary><small>Linux や、ターミナルから自分で起動する場合</small></summary>
   <small>llama.cpp を入れてから、次のコマンドで 0.8B を起動します。2B も使う場合は、別のターミナルで <code>0.8b</code> を <code>2b</code> に、<code>8080</code> を <code>8081</code> に変えたコマンドも起動します。</small>
   <pre><code>llama-server -hf pfnet/plamo-3-translate-0.8b-GGUF:Q4_K_M --host 127.0.0.1 --port 8080 --api-key plamo-select-translate --cors-origins https://plamo-select-translate.invalid --no-webui --no-slots -ngl 0 --device none -c 8192 --sleep-idle-seconds 1800</code><button class="copy sub">コピー</button></pre>
   <small><code>--api-key</code>(公開の合言葉)と <code>--cors-origins</code>(どのページにも許可しない値)は、閲覧中の Web ページが PC 上の翻訳サーバーを勝手に使えないようにするための設定です。GPU を使う場合は <code>-ngl 0 --device none</code> を外してください(一部の GPU では翻訳結果が壊れることがあります)。</small>
 </details>
 
+<p class="lead">初めての方は、ここから下の設定は変更しなくても使えます。</p>
+
 <h2>使うモデル</h2>
 <label for="modelMode">モデル</label>
 <select id="modelMode">
-  <option value="0.8b">0.8B(速くて軽い)</option>
+  <option value="0.8b">0.8B(速くて軽い・初めての方におすすめ)</option>
   <option value="2b">2B(訳文が少し自然・速度は約半分)</option>
   <option value="hybrid">使い分け(短い語句は 0.8B、文章は 2B)</option>
 </select>
@@ -98,7 +122,7 @@
 
 <label for="altLang">選択テキストが日本語だったときの翻訳先</label>
 <select id="altLang"></select>
-<small>翻訳先が日本語のときだけ使います。「なし」にすると、日本語の文章を選んでも翻訳しません(文字を選んだだけのときはパネルも出ません。右クリックや Alt+T で翻訳しようとしたときは、翻訳しない設定であることを表示します)。</small>
+<small>翻訳先が日本語のときだけ使います。「なし」にすると、日本語の文章を選んでも翻訳しません(文字を選んだだけのときはパネルも出ません。右クリックや Alt+T(Mac は option+T)で翻訳しようとしたときは、翻訳しない設定であることを表示します)。</small>
 
 <label for="form">日本語の文体</label>
 <select id="form">
@@ -109,13 +133,10 @@
 
 <div class="check"><input id="useTitleContext" type="checkbox"> <label for="useTitleContext">ページタイトルを文脈として渡す(訳語の精度が上がります)</label></div>
 <div class="check"><input id="autoTranslate" type="checkbox"> <label for="autoTranslate">テキスト選択時に自動で翻訳する</label>
-<small>オフの場合は、右クリックメニューの「PLaMo で翻訳」か Alt+T で翻訳します。</small></div>
+<small>オフの場合は、右クリックメニューの「PLaMo で翻訳」か Alt+T(Mac は option+T)で翻訳します。</small></div>
 
 <div>
   <button id="save">保存</button><span id="msg"></span>
-</div>
-<div>
-  <button id="test" class="sub">接続テスト</button><span id="status"></span>
 </div>
 
 <footer>

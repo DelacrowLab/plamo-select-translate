@@ -20,7 +20,7 @@ Web ページで選択したテキストを、自分の PC で動かす **PLaMo 
 | `plamo-translate-ext-<版>.zip` | 拡張機能と翻訳サーバーのセット一式(zip で入れる人向け) |
 | `plamo-translate-server-<版>.zip` | 翻訳サーバーのセットだけ(Chrome ウェブストアから拡張機能を入れた人向け) |
 
-使い方は zip の中の「はじめにお読みください.txt」にあります。概要は次のとおりです。
+使い方は zip の中の「はじめにお読みください(Windows).txt」「はじめにお読みください(Mac).txt」にあります。Windows の場合の概要は次のとおりです(Mac は `brew install llama.cpp` と `.command` のファイルを使います)。
 
 1. `winget install llama.cpp` で llama.cpp を入れる
 2. 拡張機能を入れる(Chrome ウェブストア、または zip をデベロッパー モードで読み込む)

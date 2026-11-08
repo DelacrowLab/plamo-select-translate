@@ -112,7 +112,7 @@ chrome.runtime.onConnect.addListener((port) => {
     streamTranslate(msg, port, ctrl.signal).catch((e) => {
       if (e.name === "AbortError") return;
       const m = e instanceof TypeError
-        ? "翻訳サーバーに接続できません。翻訳サーバーが起動しているか(自動起動を設定した場合は PC の再起動後に自動で起動します)、設定画面の URL を確認してください。"
+        ? "翻訳サーバーに接続できません。設定した直後や PC の起動直後は、モデルの準備に数分かかります。少し待ってもつながらないときは、設定画面の「接続テスト」で確認してください。"
         : e.message || String(e);
       safePost(port, { error: m });
     });
@@ -224,6 +224,7 @@ async function streamFrom(baseUrl, text, title, s, port, signal) {
   if (res.status === 401) {
     throw new Error("翻訳サーバーに接続を断られました(401)。サーバーに独自の API キーを設定している場合は、設定画面の「API キー」に同じ値を入力してください。");
   }
+  if (res.status === 503) throw new Error("翻訳サーバーがモデルを準備しています。少し待ってからもう一度お試しください。");
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(`サーバーエラー ${res.status}: ${body.slice(0, 300)}`);

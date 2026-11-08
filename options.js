@@ -135,6 +135,17 @@ $("save").addEventListener("click", async () => {
   setTimeout(() => flash($("msg"), ""), 2000);
 });
 
+const NOT_CONNECTED = "接続できません。";
+
+// つながらないときの案内。翻訳サーバーのセットの既定の接続先と、自分で指定した URL で内容を変える
+function connectionHint(label, url) {
+  if (url !== DEFAULTS.shortUrl && url !== DEFAULTS.longUrl) return "サーバーが起動しているか、URL が正しいか確認してください。";
+  if (label === "2B") {
+    return "\n  → 2B を使うには、翻訳サーバーのセットの「自動起動を設定する」(Windows は .bat、Mac は .command)で「2. 0.8B と 2B」を選んでください(それまでは 0.8B で翻訳します)。選んだ直後は、ダウンロードが終わるまで数分かかります。";
+  }
+  return "\n  → 設定した直後は、モデルの準備に数分かかります。少し待ってからもう一度押してください。\n  → まだ失敗するときは、翻訳サーバーのセットの「自動起動を設定する」(Windows は .bat、Mac は .command)をもう一度開いてください。";
+}
+
 const BROKEN = /^(.)\1{5,}/; // 「&&&&&&…」のような壊れた出力
 
 async function testServer(url, v) {
@@ -156,6 +167,7 @@ async function testServer(url, v) {
       })
     });
     if (res.status === 401) throw new Error("接続を断られました(401)。サーバーに独自の API キーを設定している場合は、「API キー」に同じ値を入力してください。");
+    if (res.status === 503) throw new Error("モデルを準備しています。少し待ってからもう一度押してください。");
     if (!res.ok) throw new Error(`サーバーエラー ${res.status}`);
     const out = ((await res.json()).choices?.[0]?.text || "").trim();
     const ms = Math.round(performance.now() - t0);
@@ -164,7 +176,7 @@ async function testServer(url, v) {
     }
     return [true, `成功: "Hello, world!" → "${out}"(${ms} ms)`];
   } catch (e) {
-    return [false, e instanceof TypeError ? "接続できません。翻訳サーバーが起動しているか確認してください。" : e.message];
+    return [false, e instanceof TypeError ? NOT_CONNECTED : e.message];
   }
 }
 
@@ -178,14 +190,19 @@ $("test").addEventListener("click", async () => {
   const results = await Promise.all(list.map(([, u]) => testServer(u, v)));
   const lines = results.map(([good, msg], i) => {
     const label = list[i][0];
-    // 2B のサーバーにつながらないときは、「0.8B のみ」で起動している可能性が高いので案内を足す
-    if (!good && label === "2B" && /接続できません/.test(msg)) {
-      msg += "\n  → 2B を使うには、翻訳サーバーのセットの「自動起動を設定する.bat」で「2. 0.8B と 2B」を選んでください(それまでは 0.8B で翻訳します)。";
-    }
+    if (!good && msg === NOT_CONNECTED) msg += connectionHint(label, list[i][1]);
     return `${label}: ${msg}`;
   });
   flash($("status"), lines.join("\n"), results.every(([good]) => good) ? "ok" : "ng");
 });
+
+// 準備の手順は、お使いの OS の分を最初に表示し、ボタンで切り替えられるようにする
+function showOs(os) {
+  for (const b of document.querySelectorAll("[data-os]")) b.setAttribute("aria-pressed", String(b.dataset.os === os));
+  for (const l of document.querySelectorAll("[data-steps]")) l.hidden = l.dataset.steps !== os;
+}
+for (const b of document.querySelectorAll("[data-os]")) b.addEventListener("click", () => showOs(b.dataset.os));
+showOs(/mac/i.test(navigator.userAgentData?.platform || navigator.platform) ? "mac" : "win");
 
 for (const btn of document.querySelectorAll(".copy")) {
   btn.addEventListener("click", async () => {
