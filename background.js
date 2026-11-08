@@ -83,7 +83,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 chrome.action.onClicked.addListener(() => chrome.runtime.openOptionsPage());
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "plamo-translate" && tab?.id) sendToTab(tab.id, info.selectionText);
+  if (info.menuItemId === "plamo-translate" && tab?.id) sendToTab(tab.id, info.selectionText, info.frameId);
 });
 
 chrome.commands.onCommand.addListener(async (cmd) => {
@@ -94,16 +94,32 @@ chrome.commands.onCommand.addListener(async (cmd) => {
 
 // 拡張機能の更新前から開いているタブや PDF ビューアーなど、ページの中に表示できないときは、
 // 右クリックメニューが渡してくれた文章を小さなウィンドウで翻訳する(ショートカットでは文章を受け取れないので何もしない)。
-function sendToTab(tabId, selectionText) {
-  chrome.tabs.sendMessage(tabId, { type: "translate-selection", selectionText })
-    .catch(() => false)
-    .then((handled) => { if (!handled && selectionText) openResultWindow(selectionText); });
+async function sendToTab(tabId, selectionText, frameId) {
+  const message = { type: "translate-selection", selectionText };
+  const send = (options) => chrome.tabs.sendMessage(tabId, message, options).catch(() => false);
+  // 右クリックされたフレームに頼む。PDF ビューアーの枠には翻訳用スクリプトがいないので、受け持てなければタブ全体に頼む
+  const handled = (frameId !== undefined && await send({ frameId })) || await send();
+  if (!handled && selectionText) openResultWindow(selectionText);
 }
 
+// 別ウィンドウに渡す文章は、受け取られるまでメモリにだけ置く
+const pendingResults = new Map();
+
 async function openResultWindow(text) {
-  await chrome.storage.session.set({ resultText: text.slice(0, MAX_CHARS) });
-  await chrome.windows.create({ url: "result.html", type: "popup", width: 520, height: 340 });
+  const id = crypto.randomUUID();
+  pendingResults.set(id, text.slice(0, MAX_CHARS));
+  try {
+    await chrome.windows.create({ url: `result.html?id=${id}`, type: "popup", width: 520, height: 340 });
+  } catch (_) {
+    pendingResults.delete(id);
+  }
 }
+
+chrome.runtime.onMessage.addListener((m, sender, respond) => {
+  if (m.type !== "take-result" || !sender.url?.startsWith(chrome.runtime.getURL("result.html"))) return;
+  respond(pendingResults.get(m.id) || "");
+  pendingResults.delete(m.id);
+});
 
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== "translate") return;
@@ -151,7 +167,7 @@ function keepTerms(text, s) {
   for (const line of String(s.keepTerms || "").split("\n")) {
     const term = clean(line).trim();
     if (!term) continue;
-    const escaped = term.replace(/[.*+?^${}()|[\]\\/-]/g, "\\$&");
+    const escaped = term.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
     const re = new RegExp(`(?<![\\p{Script=Latin}\\p{N}])${escaped}(?![\\p{Script=Latin}\\p{N}])`, "giu");
     for (const m of text.matchAll(re)) terms.add(m[0]);
   }
@@ -200,18 +216,18 @@ function pickServers(text, s) {
   return [s.shortUrl];
 }
 
-function skipMessage(text, s, pageLang) {
-  if (isNumbersOnly(text)) return "数字だけの選択は翻訳しません。";
-  if (s.targetLang === "ja" && looksJapanese(text, pageLang)) return "日本語の文章は翻訳しない設定です(設定画面の「選択テキストが日本語だったときの翻訳先」で変更できます)。";
-  return "この言語は翻訳しない設定です(設定画面の「翻訳する言語」で変更できます)。";
-}
+const SKIP_MESSAGES = {
+  numbers: "数字だけの選択は翻訳しません。",
+  japanese: "日本語の文章は翻訳しない設定です(設定画面の「選択テキストが日本語だったときの翻訳先」で変更できます)。",
+  language: "この言語は翻訳しない設定です(設定画面の「翻訳する言語」で変更できます)。"
+};
 
 async function streamTranslate({ text, title, pageLang }, port, signal) {
   const s = await getSettings();
   s.pageLang = pageLang;
   // 翻訳しない文章なら、サーバーに送らずに理由を知らせる
-  const target = await decideTarget(text, s, pageLang);
-  if (!target) { safePost(port, { skip: true, message: skipMessage(text, s, pageLang) }); return; }
+  const { target, reason } = await decideTarget(text, s, pageLang);
+  if (!target) { safePost(port, { skip: true, message: SKIP_MESSAGES[reason] }); return; }
   const [primary, fallback] = pickServers(text, s);
   try {
     await streamFrom(primary, text, title, s, port, signal, target);

@@ -6,8 +6,8 @@ function show(text, cls) {
   out.textContent = text;
 }
 
-chrome.storage.session.get("resultText").then(async ({ resultText }) => {
-  await chrome.storage.session.remove("resultText");
+const id = new URLSearchParams(location.search).get("id");
+chrome.runtime.sendMessage({ type: "take-result", id }).then((resultText) => {
   if (!resultText) return show("翻訳する文章がありません。", "hint");
   const port = chrome.runtime.connect({ name: "translate" });
   let started = false;

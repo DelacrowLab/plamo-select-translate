@@ -97,7 +97,7 @@ port_in_use() { nc -z -G 1 127.0.0.1 "$1" >/dev/null 2>&1; }
 
 # このツールが起動した llama-server(この合言葉付きで PLaMo を動かしているもの)だけを止める
 stop_our_servers() {
-  pgrep -f "llama-server.*--api-key $API_KEY" | while read -r pid; do
+  pgrep -f "llama-server.*--api-key $API_KEY( |$)" | while read -r pid; do
     if ps -o command= -p "$pid" | grep -q "plamo-3-translate"; then kill "$pid" 2>/dev/null && echo "$pid"; fi
   done
 }

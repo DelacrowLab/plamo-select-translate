@@ -186,7 +186,7 @@
       if (s.autoTranslate === false) return;
       // 翻訳しない文章なら、パネルを出さずに何もしない
       const settings = { targetLang: s.targetLang || "ja", altLang: s.altLang ?? "", sourceLangs: s.sourceLangs };
-      if (!(await decideTarget(picked.text, settings, document.documentElement.lang))) return;
+      if (!(await decideTarget(picked.text, settings, document.documentElement.lang)).target) return;
       translate();
     }, 10);
   });
@@ -204,7 +204,9 @@
   chrome.runtime.onMessage.addListener((m, _sender, respond) => {
     if (m.type !== "translate-selection") return;
     const isPdf = document.contentType === "application/pdf";
-    if (getSelected()) {
+    // ショートカットはタブ全体に届くので、操作中のフレームだけが受け持つ(ほかのフレームに残った選択を訳さない)
+    const active = m.selectionText || (document.hasFocus() && !/^I?FRAME$/.test(document.activeElement?.tagName || ""));
+    if (getSelected() && active) {
       translate(true);
     } else if (isPdf && m.selectionText) {
       translate(true, m.selectionText);

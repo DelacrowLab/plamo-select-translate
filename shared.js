@@ -34,21 +34,30 @@ function toModelLang(code) {
   return { iw: "he", fil: "tl", jw: "jv" }[c] || c.split("-")[0];
 }
 
-// 選んだ文章が「翻訳する言語」に入っているか。言語の判定は Chrome が PC の中で行う
-async function isSourceAllowed(text, sourceLangs, targetLang) {
-  const langs = (sourceLangs ?? DEFAULT_SOURCE_LANGS).filter((l) => l !== targetLang);
+// Chrome が PC の中で判定した言語の一覧(可能性の高い順)。判定できないときは空
+async function detectLangs(text) {
   let result = null;
   try { result = await chrome.i18n.detectLanguage(text); } catch (_) {}
-  const found = result?.isReliable ? result.languages.map((l) => toModelLang(l.language)).filter((l) => l !== "und") : [];
+  return result?.isReliable ? result.languages.map((l) => toModelLang(l.language)).filter((l) => l !== "und") : [];
+}
+
+// 選んだ文章が「翻訳する言語」に入っているか
+function isSourceAllowed(text, found, sourceLangs, targetLang) {
+  const langs = (sourceLangs ?? DEFAULT_SOURCE_LANGS).filter((l) => l !== targetLang);
   if (found.length) return found.some((l) => langs.includes(l));
   // 短い語句などで判定できないときは、文字の種類が合う言語が選ばれていれば翻訳する
   return langs.some((l) => (LANG_SCRIPTS[l] || ["Latin"]).some((s) => new RegExp(`\\p{Script=${s}}`, "u").test(text)));
 }
 
-// 翻訳先の言語を決める。翻訳しないときは "" を返す。s は targetLang / altLang / sourceLangs を持つ設定
+// 翻訳先の言語を決める。翻訳しないときは target が "" で、reason にその理由が入る。
+// s は targetLang / altLang / sourceLangs を持つ設定
 async function decideTarget(text, s, pageLang) {
-  if (isNumbersOnly(text)) return "";
+  if (isNumbersOnly(text)) return { target: "", reason: "numbers" };
+  const found = await detectLangs(text);
   // 翻訳先が日本語で、選んだ文章も日本語なら altLang を使う
-  if (s.targetLang === "ja" && looksJapanese(text, pageLang)) return s.altLang || "";
-  return (await isSourceAllowed(text, s.sourceLangs, s.targetLang)) ? s.targetLang : "";
+  if (s.targetLang === "ja" && (looksJapanese(text, pageLang) || found[0] === "ja")) {
+    return { target: s.altLang || "", reason: "japanese" };
+  }
+  if (isSourceAllowed(text, found, s.sourceLangs, s.targetLang)) return { target: s.targetLang, reason: "" };
+  return { target: "", reason: "language" };
 }

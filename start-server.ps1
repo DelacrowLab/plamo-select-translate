@@ -97,7 +97,7 @@ function Port-InUse([int]$port) {
 # 同じモデルを別の設定で動かしている llama-server は対象にしない。
 function Get-OurServers {
   Get-CimInstance Win32_Process -Filter "Name='llama-server.exe'" |
-    Where-Object { $_.CommandLine -match [regex]::Escape("--api-key $ApiKey") -and $_.CommandLine -match "plamo-3-translate" }
+    Where-Object { $_.CommandLine -match ([regex]::Escape("--api-key $ApiKey") + "(\s|$)") -and $_.CommandLine -match "plamo-3-translate" }
 }
 
 function Stop-OurServers {

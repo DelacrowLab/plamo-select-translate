@@ -24,7 +24,7 @@ Chrome Web Store デベロッパー ダッシュボード(https://chrome.google.
 **言語:** 日本語
 
 **概要(132 文字以内):**
-選択したテキストを、PC 上で動かす PLaMo 3 Translate ですぐに翻訳。文章は外部に送信されず、API キーも不要です。
+選択したテキストを、PC 上で動かす PLaMo 3 Translate ですぐに翻訳。初期設定では文章は PC の外に送信されず、API キーも不要です。
 
 **説明:**
 ```
@@ -50,7 +50,7 @@ Chrome Web Store デベロッパー ダッシュボード(https://chrome.google.
    https://github.com/DelacrowLab/plamo-select-translate/releases/latest
 2. セットの中の「自動起動を設定する.bat」(Mac は .command)を実行し、「0.8B のみ」か「0.8B と 2B」を選ぶ
    (翻訳エンジンの llama.cpp が入っていないときは、自動でインストールします)
-   (以後、PC にサインインすると翻訳サーバーが裏で自動起動します。30 分使わないとメモリから下ろします)
+   (以後、PC にサインインすると翻訳サーバーが裏で自動起動します。0.8B は 30 分、2B は 10 分使わないとメモリから下ろします)
 3. 拡張機能の設定画面で「接続テスト」を押して確認
 初回はモデル(0.8B で約 0.6 GB)が自動でダウンロードされます。
 
@@ -90,10 +90,10 @@ https://github.com/DelacrowLab/plamo-select-translate/blob/main/PRIVACY.md
 
 **審査担当者へのメモ(「審査担当者への注記」欄など):**
 ```
-This extension sends the selected text (and, if enabled, the page title) only to translation servers running on the user's own PC: http://127.0.0.1:8080 (PLaMo 3 Translate 0.8B, default) and, when the user selects the 2B model or the hybrid mode, http://127.0.0.1:8081 (PLaMo 3 Translate 2B). Both are llama.cpp llama-server instances started by the user. Without that local server, translation shows a "cannot connect to the translation server" message by design. Setup instructions and the server kit: https://github.com/DelacrowLab/plamo-select-translate
+This extension sends the selected text (and, if enabled, the page title) by default only to translation servers running on the user's own PC: http://127.0.0.1:8080 (PLaMo 3 Translate 0.8B, default) and, when the user selects the 2B model or the hybrid mode, http://127.0.0.1:8081 (PLaMo 3 Translate 2B). Both are llama.cpp llama-server instances started by the user. Without that local server, translation shows a "cannot connect to the translation server" message by design. Setup instructions and the server kit: https://github.com/DelacrowLab/plamo-select-translate If the user explicitly configures another server in the options page (https only), the same data is sent to that server after the user grants host permission for it.
 ```
 
 ## 審査で注意すること
 
-- 名前に「PLaMo」(Preferred Networks の商標の可能性あり)を含めています。商標の扱いで指摘を受けた場合は、「クイック翻訳 for PLaMo」のように、公式製品ではないとわかる名前に変えるのが無難です。
+- 製品名には「PLaMo」を含めていません。「PLaMo」が出てくるのは、使用モデルの表記(PLaMo 3 Translate)、Built with PLaMo、互換性のための内部名とリポジトリ名だけです。
 - 審査担当者は翻訳サーバーを用意しないことが多いため、「サーバーがないと動かない」ことを説明欄と注記に明記しています。
