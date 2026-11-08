@@ -7,7 +7,7 @@ const DEFAULTS = {
   apiKey: "",
   targetLang: "ja",
   altLang: "", // "" = 日本語の文章は翻訳しない
-  sourceLangs: DEFAULT_SOURCE_LANGS,
+  skipLangs: [], // 翻訳しない言語(初期設定は、なし = 何でも翻訳する)
   keepTerms: "",
   autoKeepNames: false,
   form: "",
@@ -20,20 +20,6 @@ const LOCAL_SERVER_KEY = "plamo-select-translate";
 const BOOL_KEYS = ["useTitleContext", "autoTranslate", "autoKeepNames"];
 const $ = (id) => document.getElementById(id);
 
-// PLaMo 3 Translate の対応言語(よく使うものを先頭に)
-const LANGS = [
-  ["ja", "日本語"], ["en", "英語"], ["zh-hans", "中国語(簡体字)"], ["zh-hant", "中国語(繁体字)"],
-  ["ko", "韓国語"], ["fr", "フランス語"], ["de", "ドイツ語"], ["es", "スペイン語"], ["it", "イタリア語"],
-  ["ru", "ロシア語"], ["vi", "ベトナム語"], ["th", "タイ語"], ["id", "インドネシア語"], ["hi", "ヒンディー語"],
-  ["ar", "アラビア語"], ["nl", "オランダ語"], ["pl", "ポーランド語"], ["ms", "マレー語"], ["tl", "タガログ語"],
-  ["az", "アゼルバイジャン語"], ["be", "ベラルーシ語"], ["bg", "ブルガリア語"], ["bn", "ベンガル語"],
-  ["ca", "カタルーニャ語"], ["ceb", "セブアノ語"], ["et", "エストニア語"], ["eu", "バスク語"], ["fa", "ペルシア語"],
-  ["gu", "グジャラート語"], ["he", "ヘブライ語"], ["hr", "クロアチア語"], ["hu", "ハンガリー語"], ["hy", "アルメニア語"],
-  ["jv", "ジャワ語"], ["ka", "ジョージア語"], ["kk", "カザフ語"], ["km", "クメール語"], ["lt", "リトアニア語"],
-  ["lv", "ラトビア語"], ["ml", "マラヤーラム語"], ["mr", "マラーティー語"], ["my", "ビルマ語"], ["ne", "ネパール語"],
-  ["pa", "パンジャブ語"], ["si", "シンハラ語"], ["sk", "スロバキア語"], ["sl", "スロベニア語"], ["sr", "セルビア語"],
-  ["sw", "スワヒリ語"], ["ta", "タミル語"], ["te", "テルグ語"], ["ur", "ウルドゥー語"], ["uz", "ウズベク語"]
-];
 $("altLang").add(new Option("なし(翻訳しない)", ""));
 for (const id of ["targetLang", "altLang"]) {
   for (const [code, name] of LANGS) $(id).add(new Option(`${name} (${code})`, code));
@@ -55,17 +41,17 @@ const sourceBoxes = () => [...$("sourceLangs").querySelectorAll("input")];
 // 翻訳先と同じ言語は選べないようにして、選択中の言語を表示する
 function refreshSourceLangs() {
   const target = $("targetLang").value;
-  const names = [];
+  const names = [], off = [];
   for (const box of sourceBoxes()) {
     const name = LANGS.find(([code]) => code === box.value)[1];
     const isTarget = box.value === target;
     box.disabled = isTarget;
     box.nextElementSibling.textContent = isTarget ? `${name}(翻訳先)` : name;
-    if (box.checked && !isTarget) names.push(name);
+    if (!isTarget) (box.checked ? names : off).push(name);
   }
-  $("sourceSummary").textContent = names.length
-    ? `選択中: ${names.slice(0, 5).join("、")}${names.length > 5 ? ` ほか ${names.length - 5} 言語` : ""}`
-    : "選択されていません";
+  $("sourceSummary").textContent = !names.length ? "選択されていません"
+    : !off.length ? "すべての言語を翻訳します"
+    : `翻訳しない言語: ${off.slice(0, 5).join("、")}${off.length > 5 ? ` ほか ${off.length - 5} 言語` : ""}`;
 }
 $("sourceLangs").addEventListener("change", refreshSourceLangs);
 $("targetLang").addEventListener("change", refreshSourceLangs);
@@ -109,7 +95,7 @@ Promise.all([chrome.storage.sync.get(null), chrome.storage.local.get("apiKey")])
   for (const k of BOOL_KEYS) $(k).checked = s[k];
   $("apiKey").value = local.apiKey || "";
   $("wordThreshold").value = String(s.wordThreshold);
-  for (const box of sourceBoxes()) box.checked = s.sourceLangs.includes(box.value);
+  for (const box of sourceBoxes()) box.checked = !s.skipLangs.includes(box.value);
   showMode();
   refreshSourceLangs();
 });
@@ -153,7 +139,7 @@ function readForm() {
   v.longUrl ||= DEFAULTS.longUrl;
   v.model ||= DEFAULTS.model;
   v.wordThreshold = Number($("wordThreshold").value) || DEFAULTS.wordThreshold;
-  v.sourceLangs = sourceBoxes().filter((box) => box.checked).map((box) => box.value);
+  v.skipLangs = sourceBoxes().filter((box) => !box.checked).map((box) => box.value);
   return v;
 }
 
@@ -164,7 +150,7 @@ function flash(el, text, cls) {
 
 $("save").addEventListener("click", async () => {
   const v = readForm();
-  if (!v.sourceLangs.some((l) => l !== v.targetLang)) {
+  if (!sourceBoxes().some((box) => box.checked && box.value !== v.targetLang)) {
     return flash($("msg"), "「翻訳する言語」を 1 つ以上選んでください(翻訳先と同じ言語は数えません)", "ng");
   }
   const urls = targets(v).map(([, u]) => u);
@@ -175,7 +161,7 @@ $("save").addEventListener("click", async () => {
   }
   const apiKey = $("apiKey").value.trim();
   await chrome.storage.sync.set(v);
-  await chrome.storage.sync.remove(["serverMode", "baseUrl"]); // 1.2.x までの古い設定は消す
+  await chrome.storage.sync.remove(["serverMode", "baseUrl", "sourceLangs"]); // 1.2.x までの古い設定は消す
   await chrome.storage.local.set({ apiKey });
   flash($("msg"), "保存しました", "ok");
   setTimeout(() => flash($("msg"), ""), 2000);

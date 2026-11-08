@@ -179,13 +179,13 @@
       if (!alive()) return;
       let s;
       try {
-        s = await chrome.storage.sync.get(["autoTranslate", "targetLang", "altLang", "sourceLangs"]);
+        s = await chrome.storage.sync.get(["autoTranslate", "targetLang", "altLang", "skipLangs"]);
       } catch (_) {
         return;
       }
       if (s.autoTranslate === false) return;
       // 翻訳しない文章なら、パネルを出さずに何もしない
-      const settings = { targetLang: s.targetLang || "ja", altLang: s.altLang ?? "", sourceLangs: s.sourceLangs };
+      const settings = { targetLang: s.targetLang || "ja", altLang: s.altLang ?? "", skipLangs: s.skipLangs };
       if (!(await decideTarget(picked.text, settings, document.documentElement.lang)).target) return;
       translate();
     }, 10);
@@ -206,7 +206,13 @@
     const isPdf = document.contentType === "application/pdf";
     // ショートカットはタブ全体に届くので、操作中のフレームだけが受け持つ(ほかのフレームに残った選択を訳さない)
     const active = m.selectionText || (document.hasFocus() && !/^I?FRAME$/.test(document.activeElement?.tagName || ""));
-    if (getSelected() && active) {
+    // 右クリックのときは、今の選択が右クリックされた文章と同じ場合だけ受け持つ。
+    // 違う場合(選択が消えた、別の枠に別の選択が残っているなど)は受け持たず、右クリックされた文章を別ウィンドウで翻訳する。
+    // 改行や空白の扱いが Chrome と異なることがあるので、空白を除いた先頭 100 文字で比べる
+    const key = (s) => s.replace(/\s+/g, "").slice(0, 100);
+    const picked = getSelected();
+    const sameText = !m.selectionText || (picked && key(picked.text) === key(m.selectionText));
+    if (picked && active && sameText) {
       translate(true);
     } else if (isPdf && m.selectionText) {
       translate(true, m.selectionText);

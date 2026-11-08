@@ -11,7 +11,7 @@ const DEFAULTS = {
   apiKey: "",
   targetLang: "ja", // 翻訳先
   altLang: "",      // 選択テキストが日本語だったときの翻訳先("" = 翻訳しない)
-  sourceLangs: DEFAULT_SOURCE_LANGS, // 翻訳する言語
+  skipLangs: [],    // 翻訳しない言語(初期設定は、なし = 何でも翻訳する)
   keepTerms: "",    // 翻訳せずに残す語(1 行に 1 語)
   autoKeepNames: false, // 文の途中で大文字から始まる語も残す
   form: "",         // "" | "plain" | "polite"(日本語出力時の文体)
@@ -154,8 +154,14 @@ function safePost(port, m) {
 
 // 入力に特殊トークン(<|plamo:...|> の形)が混ざるとプロンプト構造が壊れるので除去する。
 // plamo: 以外の、<| |> で囲まれた予約トークン風の文字列も念のため除去する。
+// 取り除いた結果つながって新しいトークンができないよう、なくなるまで繰り返す。
 function clean(s) {
-  return String(s).replace(/<\|[^<>|\s]{1,40}\|>/g, "");
+  let out = String(s), prev;
+  do {
+    prev = out;
+    out = out.replace(/<\|[^<>|\s]{1,40}\|>/g, "");
+  } while (out !== prev);
+  return out;
 }
 
 // 大文字で始まる語のうち、普段から訳す語(月・曜日)は自動では残さない
