@@ -23,4 +23,7 @@ chrome.runtime.sendMessage({ type: "take-result", id }).then((resultText) => {
     if (m.done && note) out.textContent += "\n\n(" + note + ")";
   });
   port.postMessage({ text: resultText, title: "", pageLang: "" });
+}).catch(() => {
+  // 拡張機能の更新直後などで、バックグラウンドとつながらないとき
+  show("翻訳を開始できませんでした。chrome://extensions でこの拡張機能を再読み込みしてから、もう一度お試しください。", "err");
 });
