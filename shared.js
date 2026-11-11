@@ -20,6 +20,11 @@ function isNumbersOnly(text) {
   return /\p{Nd}/u.test(text) && /^[\p{Nd}\s.,:\/+\-−．,:/+-]+$/u.test(text);
 }
 
+// 記号や句読点だけの選択(「、」「。」「...」「→」など。文字も数字も含まない)
+function isSymbolsOnly(text) {
+  return /^[\p{P}\p{S}\s]+$/u.test(text);
+}
+
 // 絵文字だけの選択(肌の色・国旗・数字のキーキャップ・結合された絵文字や、間の空白を含む)
 // \p{RGI_Emoji} には正規表現の v フラグ(Chrome 112 以降)が要る。古い Chrome でもこのファイル全体が止まらないよう、実行時に作る
 const EMOJI_ONLY = (() => {
@@ -81,6 +86,7 @@ function isSourceAllowed(text, found, skipLangs, targetLang) {
 async function decideTarget(text, s, pageLang) {
   if (isNumbersOnly(text)) return { target: "", reason: "numbers" };
   if (isEmojiOnly(text)) return { target: "", reason: "emoji" };
+  if (isSymbolsOnly(text)) return { target: "", reason: "symbols" };
   const found = await detectLangs(text);
   // 翻訳先が日本語で、選んだ文章も日本語なら altLang を使う
   if (s.targetLang === "ja" && (looksJapanese(text, pageLang) || found[0] === "ja")) {
